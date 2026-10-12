@@ -1,0 +1,70 @@
+---
+// Shared shell for every page: head, fonts, nav, footer and Astro's ClientRouter,
+// which turns link clicks into same-document view transitions.
+import { ClientRouter } from 'astro:transitions';
+import '../styles/global.css';
+
+interface Props { title?: string; description?: string; page: string }
+const { title, description = 'Custom keyboards and desk accessories, made to order. Design every key in 3D.', page } = Astro.props;
+const fullTitle = title ? `${title} · Keycap Studio` : 'Keycap Studio · Custom keyboards and desk gear';
+
+// Page content slides up and fades in; going back reverses the direction.
+const pageAnim = {
+  forwards: {
+    old: { name: 'ks-page-out', duration: '160ms', easing: 'cubic-bezier(.4,0,1,1)', fillMode: 'both' },
+    new: { name: 'ks-page-in', duration: '380ms', delay: '70ms', easing: 'cubic-bezier(.2,.75,.15,1)', fillMode: 'both' },
+  },
+  backwards: {
+    old: { name: 'ks-page-out-back', duration: '160ms', easing: 'cubic-bezier(.4,0,1,1)', fillMode: 'both' },
+    new: { name: 'ks-page-in-back', duration: '380ms', delay: '70ms', easing: 'cubic-bezier(.2,.75,.15,1)', fillMode: 'both' },
+  },
+};
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <meta name="ks-base" content="/" data-ext="" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Barlow:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Fraunces:wght@500;700&family=Press+Start+2P&family=Bebas+Neue&family=Caveat:wght@500;700&family=Rubik+Mono+One&display=swap" />
+    <ClientRouter />
+  </head>
+  <body data-page={page}>
+    <header class="nav" transition:persist="site-nav" transition:name="site-nav">
+      <div class="nav-in">
+        <a href="/" class="brand" aria-label="Keycap Studio home"><span class="mark" aria-hidden="true"></span><span class="brand-name">Keycap Studio</span></a>
+        <nav class="nav-links" aria-label="Main">
+          <a href="/shop" data-nav="shop">Shop</a>
+          <a href="/keyboards" data-nav="keyboards">Keyboards</a>
+          <a href="/customize" data-nav="customize">Customizer</a>
+        </nav>
+        <a href="/cart" class="cart-btn" data-nav="cart" aria-label="Cart">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9.5" cy="19.5" r="1.4"/><circle cx="17.5" cy="19.5" r="1.4"/><path d="M2.5 3.5h2.6l2.3 10.6a1.6 1.6 0 0 0 1.6 1.3h8.1a1.6 1.6 0 0 0 1.5-1.1L21 7.2H6.1"/></svg>
+          <span class="badge" id="cartCount" data-n="0">0</span>
+        </a>
+      </div>
+    </header>
+
+    <main id="main" transition:animate={pageAnim}>
+      <slot />
+    </main>
+
+    <footer class="foot" transition:name="site-foot">
+      <div class="foot-in">
+        <div><strong style="color:var(--fg)">Keycap Studio</strong><br />Custom keyboards and desk accessories, made to order.</div>
+        <div class="foot-links"><a href="/shop">Shop</a><a href="/keyboards">Keyboards</a><a href="/customize">Customizer</a><a href="/cart">Cart</a></div>
+        <div>Prototype storefront. Prices and products are examples.</div>
+      </div>
+    </footer>
+    <div class="toast" id="toast" role="status" aria-live="polite" transition:persist="toast" hidden><span id="toastMsg"></span><a href="/cart" id="toastLink">View cart</a></div>
+
+    <script>
+      import '../scripts/site.js';
+    </script>
+  </body>
+</html>

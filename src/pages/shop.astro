@@ -1,0 +1,26 @@
+---
+import Base from '../layouts/Base.astro';
+import ProductCard from '../components/ProductCard.astro';
+import BoardCard from '../components/BoardCard.astro';
+import { MODELS } from '../data/keyboards.js';
+import { CATS, PRODUCTS } from '../data/products.js';
+const boards = Object.keys(MODELS);
+---
+<Base title="Shop" page="shop">
+  <section class="page">
+    <div class="wrap">
+      <div class="page-head"><p class="eyebrow">Shop</p><h1>Everything for your desk</h1><p class="lede">Every item is made to order. Open any product to choose colors, finishes and personal touches.</p></div>
+      <div class="filters">
+        <div class="chips" role="group" aria-label="Category">
+          <button type="button" class="chip" data-shopcat="all" aria-pressed="true">All</button>
+          {CATS.map(c => <button type="button" class="chip" data-shopcat={c.id} aria-pressed="false">{c.name}</button>)}
+        </div>
+        <label class="sort" for="shopSort">Sort by <select id="shopSort"><option value="featured">Featured</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option></select></label>
+      </div>
+      <div class="grid cards" id="shopGrid">
+        {PRODUCTS.map((p, i) => <ProductCard p={p} order={i} />)}
+        {boards.map((mid, i) => <BoardCard mid={mid} order={PRODUCTS.length + i} />)}
+      </div>
+    </div>
+  </section>
+</Base>

@@ -1,0 +1,37 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="Checkout" page="checkout">
+  <section class="page">
+    <div class="wrap">
+      <div class="page-head"><a class="back" href="/cart">← Back to cart</a><h1>Checkout</h1></div>
+      <div class="co-grid">
+        <form class="co-form" id="coForm" novalidate>
+          <p class="demo-note">This is a prototype store. Placing an order shows a confirmation only: no payment is taken and nothing ships.</p>
+          <fieldset>
+            <legend>Contact</legend>
+            <label for="coEmail">Email<input type="email" id="coEmail" autocomplete="email" required /></label>
+          </fieldset>
+          <fieldset>
+            <legend>Shipping address</legend>
+            <label for="coName">Full name<input type="text" id="coName" autocomplete="name" required /></label>
+            <label for="coAddr">Street address<input type="text" id="coAddr" autocomplete="street-address" required /></label>
+            <div class="grid2">
+              <label for="coCity">City<input type="text" id="coCity" autocomplete="address-level2" required /></label>
+              <label for="coZip">Postal code<input type="text" id="coZip" autocomplete="postal-code" /></label>
+            </div>
+            <label for="coCountry">Country<select id="coCountry" autocomplete="country-name"></select></label>
+          </fieldset>
+          <fieldset>
+            <legend>Delivery</legend>
+            <label class="radio"><input type="radio" name="ship" value="standard" checked /><span>Standard · 5–8 business days</span><strong id="shipStd">$9</strong></label>
+            <label class="radio"><input type="radio" name="ship" value="express" /><span>Express · 2–3 business days</span><strong>$24</strong></label>
+          </fieldset>
+          <p class="err" id="coErr" hidden></p>
+          <button type="submit" class="btn primary lg" id="coSubmit">Place order</button>
+        </form>
+        <aside class="summary" id="coSummary"></aside>
+      </div>
+    </div>
+  </section>
+</Base>

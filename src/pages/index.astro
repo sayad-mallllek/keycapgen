@@ -1,0 +1,68 @@
+---
+import Base from '../layouts/Base.astro';
+import BoardCard from '../components/BoardCard.astro';
+import { MODELS, COLORWAYS, GENERIC_IDS } from '../data/keyboards.js';
+import { CATS, PRODUCT_BY_ID } from '../data/products.js';
+import { artSVG, boardSVG } from '../lib/svg.js';
+const catArt = {
+  keyboards: boardSVG('q1max'), mice: artSVG(PRODUCT_BY_ID['glide-58']), mats: artSVG(PRODUCT_BY_ID['studio-mat']),
+  audio: artSVG(PRODUCT_BY_ID['halo-headset']), cables: artSVG(PRODUCT_BY_ID['coil-cable']),
+};
+---
+<Base page="home">
+  <section class="page">
+    <div class="wrap hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Custom desk gear, made to order</p>
+        <h1>Desk gear, built <em>key by key</em>.</h1>
+        <p class="lede">Pick a keyboard, then make every key yours: colors, legends, your own drawings and skins that wrap all the way around. Match it with a mouse, desk mat, cable and case.</p>
+        <div class="row-btns"><a class="btn primary lg" href="/keyboards">Design your keyboard</a><a class="btn lg" href="/shop">Shop accessories</a></div>
+        <dl class="hero-facts">
+          <div><dt>{Object.keys(MODELS).length}</dt><dd>keyboard models</dd></div>
+          <div><dt>{GENERIC_IDS.length}</dt><dd>keycap sets</dd></div>
+          <div><dt>360°</dt><dd>art on every key side</dd></div>
+        </dl>
+      </div>
+      <div class="hero-stage" data-studio="hero">
+        <span class="hero-tag" id="heroTag">Live preview</span>
+        <a class="btn primary hero-edit" href="/customize">Edit this board</a>
+      </div>
+    </div>
+
+    <div class="wrap sec">
+      <div class="sec-row"><h2>Shop by category</h2><a href="/shop">Everything →</a></div>
+      <div class="cats">
+        {CATS.map(c => (
+          <a class="cat" href={c.id === 'keyboards' ? '/keyboards' : '/shop'} data-cat={c.id}>
+            <div class="art" set:html={catArt[c.id]} />
+            <strong>{c.name}</strong><span>{c.blurb}</span>
+          </a>
+        ))}
+      </div>
+    </div>
+
+    <div class="wrap sec">
+      <h2>How it works</h2>
+      <div class="steps">
+        <div class="step"><h3>Pick a board</h3><p>Choose from nine layouts, from a 60-key HHKB to a full-size board with a numpad.</p></div>
+        <div class="step"><h3>Make every key yours</h3><p>Recolor caps, rewrite legends, paint on any side or wrap a picture across the whole board.</p></div>
+        <div class="step"><h3>We build it for you</h3><p>Every order is printed and assembled to your design, then packed with the accessories you matched.</p></div>
+      </div>
+    </div>
+
+    <div class="wrap sec">
+      <div class="sec-row"><h2>Featured keyboards</h2><a href="/keyboards">All keyboards →</a></div>
+      <div class="grid cards">{['q1max', 'apexpro', 'air75'].map(mid => <BoardCard mid={mid} />)}</div>
+    </div>
+
+    <div class="wrap sec">
+      <div class="sec-row"><h2>Start from a keycap set</h2></div>
+      <p class="lede">Tap a set to load it onto your board in the customizer.</p>
+      <div class="sets">
+        {GENERIC_IDS.map(id => { const c = COLORWAYS[id]; return (
+          <button type="button" class="set" data-set={id}><i><b style={`background:${c.alpha[0]}`}></b><b style={`background:${c.mod[0]}`}></b><b style={`background:${c.accent[0]}`}></b></i>{c.name}</button>
+        ); })}
+      </div>
+    </div>
+  </section>
+</Base>

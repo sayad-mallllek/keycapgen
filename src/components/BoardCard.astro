@@ -1,0 +1,18 @@
+---
+import { boardSVG } from '../lib/svg.js';
+import { MODELS, PROFILES } from '../data/keyboards.js';
+import { money } from '../lib/util.js';
+const { mid, order = 0 } = Astro.props;
+const M = MODELS[mid];
+const group = M.layout.startsWith('60') ? '60%' : M.layout.startsWith('75') ? '75%' : M.layout === 'TKL' ? 'TKL' : '100%';
+---
+<article class="card" data-cat="keyboards" data-layout={group} data-price={M.price} data-order={order}>
+  <a class="card-media" href="/customize" data-model={mid} aria-label={`Customize ${M.name}`} set:html={boardSVG(mid)} />
+  <div class="card-body">
+    <div class="card-cat">Keyboards · {M.layout}</div>
+    <h3><a href="/customize" data-model={mid}>{M.name}</a></h3>
+    <p>{M.signature}</p>
+    <div class="specline"><span>{M.switches.split(',')[0]}</span><span>{PROFILES[M.profile].name}</span></div>
+    <div class="card-foot"><span class="price"><small>from</small>{money(M.price)}</span><a class="btn small primary" href="/customize" data-model={mid}>Customize</a></div>
+  </div>
+</article>

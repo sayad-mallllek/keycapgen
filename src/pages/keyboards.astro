@@ -1,0 +1,17 @@
+---
+import Base from '../layouts/Base.astro';
+import BoardCard from '../components/BoardCard.astro';
+import { MODELS } from '../data/keyboards.js';
+---
+<Base title="Keyboards" page="keyboards">
+  <section class="page">
+    <div class="wrap">
+      <div class="page-head"><p class="eyebrow">Keyboards</p><h1>Choose a board to customize</h1><p class="lede">Each board opens in the customizer with its stock finish. Change any key, then add it to your cart.</p></div>
+      <div class="filters"><div class="chips" role="group" aria-label="Layout">
+        {['all', '60%', '75%', 'TKL', '100%'].map(g => <button type="button" class="chip" data-kb={g} aria-pressed={g === 'all' ? 'true' : 'false'}>{g === 'all' ? 'All layouts' : g}</button>)}
+      </div></div>
+      <div class="grid cards" id="kbGrid">{Object.keys(MODELS).map((mid, i) => <BoardCard mid={mid} order={i} />)}</div>
+      <p class="note" style="margin-top:18px">Simplified 3D models for illustration. Keycap Studio is not affiliated with the keyboard brands shown.</p>
+    </div>
+  </section>
+</Base>
