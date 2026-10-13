@@ -395,3 +395,14 @@ a.btn.primary{color:var(--accent-ink)}
 @media (prefers-reduced-motion: reduce){
   ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}
 }
+
+/* ---------- 3D product viewer ---------- */
+.pd-stage{position:relative;overflow:hidden}
+.pd-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab}
+.pd-canvas:active{cursor:grabbing}
+.pd-hint{position:absolute;left:12px;bottom:12px;font-size:.78rem;font-weight:600;background:color-mix(in srgb,var(--surface) 85%,transparent);border:1px solid var(--line);border-radius:999px;padding:5px 10px;color:var(--muted);pointer-events:none}
+.pd-sig{margin:0;font-weight:600;border-left:3px solid var(--accent);padding-left:12px}
+.thumb-slot{display:block;width:100%;height:100%}
+.thumb-slot img,.thumb-slot svg{width:100%;height:100%;object-fit:contain}
+.ci-thumb img{object-fit:contain}
+.cat .art img{width:100%;height:100%;object-fit:contain;display:block}

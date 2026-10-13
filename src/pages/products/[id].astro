@@ -16,12 +16,13 @@ const cat = CATS.find(c => c.id === p.cat).name;
       <div class="pd" data-product={p.id}>
         <div class="pd-media">
           <div class="pd-stage" id="pdStage" transition:name={`prod-${p.id}`} set:html={artSVG(p)} />
-          <p class="note">Illustrated preview. Colors are shown as close as a screen allows.</p>
+          <p class="note">3D model built from the published dimensions. Colors are shown as close as a screen allows. Keycap Studio customizes this product and is not affiliated with {p.brand}.</p>
         </div>
         <div class="pd-info">
-          <div class="card-cat">{cat}</div>
+          <div class="card-cat">{cat} · {p.brand}</div>
           <h1 transition:name={`prod-title-${p.id}`}>{p.name}</h1>
           <p class="lede">{p.blurb}</p>
+          <p class="pd-sig">{p.signature}</p>
           <div class="pd-price" id="pdPrice">{money(p.price)}</div>
           <div id="pdOpts"></div>
           <div class="buy-row">

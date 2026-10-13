@@ -5,12 +5,13 @@ import { money } from '../lib/util.js';
 const { p, order = 0 } = Astro.props;
 const cat = CATS.find(c => c.id === p.cat).name;
 ---
-<article class="card" data-cat={p.cat} data-price={p.price} data-order={order}>
+<article class="card" data-cat={p.cat} data-price={p.price} data-order={order} data-pid={p.id}>
   <a class="card-media" href={`/products/${p.id}`} aria-label={p.name} transition:name={`prod-${p.id}`} set:html={artSVG(p)} />
   <div class="card-body">
-    <div class="card-cat">{cat}</div>
+    <div class="card-cat">{cat} · {p.brand}</div>
     <h3><a href={`/products/${p.id}`} transition:name={`prod-title-${p.id}`}>{p.name}</a></h3>
     <p>{p.tag}</p>
+    <div class="specline"><span>3D model</span><span>{p.options.length} custom options</span></div>
     <div class="card-foot"><span class="price"><small>from</small>{money(p.price)}</span><a class="btn small" href={`/products/${p.id}`}>Customize</a></div>
   </div>
 </article>

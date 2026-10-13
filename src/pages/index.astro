@@ -5,9 +5,11 @@ import { MODELS, COLORWAYS, GENERIC_IDS } from '../data/keyboards.js';
 import { CATS, PRODUCT_BY_ID } from '../data/products.js';
 import { artSVG, boardSVG } from '../lib/svg.js';
 const catArt = {
-  keyboards: boardSVG('q1max'), mice: artSVG(PRODUCT_BY_ID['glide-58']), mats: artSVG(PRODUCT_BY_ID['studio-mat']),
-  audio: artSVG(PRODUCT_BY_ID['halo-headset']), cables: artSVG(PRODUCT_BY_ID['coil-cable']),
+  keyboards: boardSVG('q1max'), mice: artSVG(PRODUCT_BY_ID['pro-x-superlight-2']), mats: artSVG(PRODUCT_BY_ID['qck-heavy-xxl']),
+  audio: artSVG(PRODUCT_BY_ID['arctis-nova-pro-omni']), cables: artSVG(PRODUCT_BY_ID['coiled-aviator-cable']),
 };
+// Category tiles show a 3D render of one real product (swapped in by the browser)
+const catThumb = { mice: 'pro-x-superlight-2', mats: 'qck-heavy-xxl', audio: 'arctis-nova-pro-omni', cables: 'coiled-aviator-cable' };
 ---
 <Base page="home">
   <section class="page">
@@ -34,7 +36,7 @@ const catArt = {
       <div class="cats">
         {CATS.map(c => (
           <a class="cat" href={c.id === 'keyboards' ? '/keyboards' : '/shop'} data-cat={c.id}>
-            <div class="art" set:html={catArt[c.id]} />
+            <div class="art" data-thumb={catThumb[c.id]} set:html={catArt[c.id]} />
             <strong>{c.name}</strong><span>{c.blurb}</span>
           </a>
         ))}

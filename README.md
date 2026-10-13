@@ -21,7 +21,7 @@ Requires Node 18.20+ (tested with Node 22).
 | `/` | Home: live 3D preview of the shopper's current board, categories, featured boards, keycap sets |
 | `/shop` | All products with category filters and price sorting |
 | `/keyboards` | The nine keyboard models, filterable by layout |
-| `/products/[id]` | One page per accessory (built from `src/data/products.js`) with live preview and options |
+| `/products/[id]` | One page per accessory (built from `src/data/products.js`) with a 360° 3D model and options |
 | `/customize` | The full 3D keyboard customizer, with live price and add to cart |
 | `/cart`, `/checkout`, `/order-placed` | Cart (kept in localStorage), prototype checkout and confirmation |
 
@@ -45,11 +45,12 @@ It builds its own UI from `studio-ui.html` once and keeps it in memory. Pages on
 ```
 src/
   data/keyboards.js   layouts, keycap profiles, 9 models, 21 keycap sets + stock finishes (pure data)
-  data/products.js    accessory catalog, options and pricing
+  data/products.js    accessory catalog (10 real products), options and pricing
   lib/svg.js          product and keyboard illustrations as SVG (rendered at build time and live in the browser)
   lib/samples.js      procedural print/skin images (canvas)
   lib/cart.js         cart storage, toast, page-URL helper
   lib/util.js         money formatting and color helpers
+  engine/products3d.js procedural 3D models of the accessories, product viewer and thumbnail renderer
   engine/studio.js    three.js scene + customizer (drawing, skins, isolation, demo…)
   engine/studio-ui.html  the customizer's markup
   scripts/site.js     page setup on every navigation (shop filters, product options, cart, checkout)
@@ -63,5 +64,6 @@ src/
 
 - Prices, products and delivery options are placeholders.
 - Checkout is a prototype: it validates the form and shows a confirmation; no payment is taken and nothing is sent anywhere.
+- Accessories are real products (Logitech, Razer, SteelSeries, Grovemade…) modeled procedurally from their published dimensions. Card and cart images are rendered from the same 3D models.
 - Keyboard models are simplified illustrations; Keycap Studio is not affiliated with the brands shown. Keycap set colors approximate well-known GMK, SA and ePBT sets.
 - The cart and the current design are stored in the visitor's browser (localStorage).

@@ -17,6 +17,14 @@ function printFallback(kind, x, y, w, h, id) {
 
 export function artSVG(p, cfg, printSrc = null) {
   const o = { ...defaultsOf(p), ...(cfg || {}) }, id = 'a' + (svgSeq++);
+  // map each real product's options onto the generic illustration
+  const ch = k => { const op = p.options.find(x => x.id === k); return op && op.choices ? op.choices.find(c => c.v === o[k]) : null; };
+  if (p.kind === 'mouse-ergo') o.side = o.thumb || o.shell;
+  if (p.kind === 'mat') { o._dims = (ch('size') || {}).mm; if (p.model === 'felt') { o.print = 'solid'; o.color = o.felt; } o._stitch = o.stitch ? o.stitchColor : 'transparent'; }
+  if (p.kind === 'headset') o.accent = o.plates || o.frame;
+  if (p.kind === 'stand') { o.color = (ch('wood') || {}).color || '#5a3e2b'; o.base = 'steel'; }
+  if (p.kind === 'cable') { o.aviator = true; o.length = o.length || '1.8 m'; }
+  if (p.kind === 'case') { const mm = (ch('size') || {}).mm; if (mm) o._w = Math.round(360 * mm[0] / 490); }
   const T = (x, y, txt, fill, size = 15) => txt ? `<text x="${x}" y="${y}" text-anchor="middle" font-family="Public Sans, system-ui, sans-serif" font-weight="700" font-size="${size}" fill="${fill}" opacity=".8">${escA(txt)}</text>` : '';
   const shadow = (cx, cy, rx) => `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${rx * 0.1}" fill="#000" opacity=".13"/>`;
   const shine = `<linearGradient id="${id}s" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="${o.finish === 'Gloss' ? 0.5 : 0.2}"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".2"/></linearGradient>`;
@@ -39,7 +47,7 @@ export function artSVG(p, cfg, printSrc = null) {
       <rect x="${split - 8}" y="62" width="16" height="38" rx="8" fill="#1b1d23"/><rect x="${split - 4}" y="70" width="8" height="6" rx="2" fill="#6b6f78"/>
       ${T(split, 222, o.engrave, inkOn(o.shell))}`;
   } else if (p.kind === 'mat') {
-    const dm = { S: [450, 400], M: [800, 300], XL: [900, 400] }[o.size] || [800, 300];
+    const dm = o._dims || { S: [450, 400], M: [800, 300], XL: [900, 400] }[o.size] || [800, 300];
     const sc = Math.min(350 / dm[0], 210 / dm[1]), w = dm[0] * sc, h = dm[1] * sc, x = 200 - w / 2, y = 140 - h / 2;
     const src = o.print === 'upload' ? o.printImg : o.print === 'solid' ? null : (printSrc ? printSrc(o.print) : null);
     const fill = src ? `<image href="${src}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid slice"/>`
@@ -48,7 +56,7 @@ export function artSVG(p, cfg, printSrc = null) {
     body = `<defs><clipPath id="${id}c"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12"/></clipPath></defs>
       <rect x="${x + 4}" y="${y + 8}" width="${w}" height="${h}" rx="12" fill="#000" opacity=".12"/>
       <g clip-path="url(#${id}c)">${fill}</g>
-      <rect x="${x + 5}" y="${y + 5}" width="${w - 10}" height="${h - 10}" rx="8" fill="none" stroke="${o.stitch}" stroke-width="2.2" stroke-dasharray="5 4"/>
+      <rect x="${x + 5}" y="${y + 5}" width="${w - 10}" height="${h - 10}" rx="8" fill="none" stroke="${o._stitch || o.stitch}" stroke-width="2.2" stroke-dasharray="5 4"/>
       ${T(200, y + h + 30, `${dm[0]} × ${dm[1]} mm`, '#535e7d', 13)}`;
   } else if (p.kind === 'headset') {
     const cush = (p.options.find(x => x.id === 'cushion').choices.find(c => c.v === o.cushion) || {}).color || '#8a8f99';
@@ -61,7 +69,7 @@ export function artSVG(p, cfg, printSrc = null) {
       <rect x="74" y="150" width="70" height="110" rx="32" fill="url(#${id}s)"/><rect x="256" y="150" width="70" height="110" rx="32" fill="url(#${id}s)"/>
       ${o.mic ? `<path d="M96 246 C96 280 140 290 176 280" fill="none" stroke="#24262c" stroke-width="6" stroke-linecap="round"/><circle cx="180" cy="279" r="8" fill="#24262c"/>` : ''}`;
   } else if (p.kind === 'stand') {
-    const base = o.base === 'Walnut' ? '#7a4e2d' : shade(o.color, -0.25);
+    const base = o.base === 'steel' ? '#c4c6c8' : o.base === 'Walnut' ? '#7a4e2d' : shade(o.color, -0.25);
     body = `<defs>${shine}</defs>${shadow(200, 276, 110)}
       <ellipse cx="200" cy="258" rx="100" ry="20" fill="${shade(base, -0.25)}"/><ellipse cx="200" cy="250" rx="100" ry="20" fill="${base}"/>
       <rect x="191" y="70" width="18" height="182" rx="6" fill="${o.color}"/>
@@ -81,7 +89,7 @@ export function artSVG(p, cfg, printSrc = null) {
       ${av ? `<rect x="262" y="134" width="40" height="34" rx="7" fill="${o.metal}"/><rect x="274" y="134" width="3" height="34" fill="#000" opacity=".2"/><rect x="288" y="134" width="3" height="34" fill="#000" opacity=".2"/><path d="M302 151 L330 151" stroke="${o.sleeve}" stroke-width="7"/>` : ''}
       <rect x="330" y="140" width="50" height="22" rx="7" fill="${o.metal}"/><rect x="378" y="145" width="12" height="12" rx="3" fill="#8d929c"/>`;
   } else if (p.kind === 'case') {
-    const w = { '60%': 250, '75%': 280, 'TKL': 320, 'Full': 360 }[o.size] || 280, h = 150, x = 200 - w / 2, y = 90;
+    const w = o._w || { '60%': 250, '75%': 280, 'TKL': 320, 'Full': 360 }[o.size] || 280, h = 150, x = 200 - w / 2, y = 90;
     body = `<defs>${shine}</defs>${shadow(200, 262, w / 2 + 10)}
       <path d="M${200 - 34} ${y + 2} C${200 - 34} ${y - 30} ${200 + 34} ${y - 30} ${200 + 34} ${y + 2}" fill="none" stroke="${shade(o.color, -0.2)}" stroke-width="10" stroke-linecap="round"/>
       <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="30" fill="${o.color}"/>

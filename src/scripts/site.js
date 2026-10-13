@@ -12,6 +12,46 @@ const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const printSrc = id => getSampleImages()[id] || null;
 
+// Real-product 3D models (viewer on product pages, rendered thumbnails for cards and the cart)
+let p3d = null;
+const load3d = () => p3d || (p3d = import('../engine/products3d.js'));
+async function getThumb(p, cfg, w = 560, h = 420) {
+  const key = 'ks-t:' + p.id + ':' + w + ':' + JSON.stringify(cfg);
+  const cacheable = key.length < 3000;   // skip session caching for configs that carry an uploaded image
+  if (cacheable) { try { const hit = sessionStorage.getItem(key); if (hit) return hit; } catch (e) {} }
+  const { thumbnail } = await load3d();
+  const url = await thumbnail(p, cfg, w, h);
+  if (cacheable) { try { sessionStorage.setItem(key, url); } catch (e) {} }
+  return url;
+}
+// Swap the build-time illustrations for renders of the 3D models
+// Renders yield to idle time and stop as soon as a navigation starts, so they never hold up a page change
+let thumbGen = 0;
+document.addEventListener('astro:before-preparation', () => { thumbGen++; });
+const idle = () => new Promise(r => (window.requestIdleCallback ? requestIdleCallback(r, { timeout: 600 }) : setTimeout(r, 60)));
+async function fillThumbs() {
+  const gen = thumbGen;
+  await idle();
+  const els = [...document.querySelectorAll('.card[data-pid] .card-media, [data-thumb]')];
+  for (const el of els) {
+    if (gen !== thumbGen) return;
+    const pid = el.dataset.thumb || (el.closest('[data-pid]') || {}).dataset?.pid, p = PRODUCT_BY_ID[pid]; if (!p) continue;
+    const url = await getThumb(p, defaultsOf(p));
+    if (gen !== thumbGen) return;
+    await idle();
+    if (el.isConnected) el.innerHTML = `<img src="${url}" alt="${escA(p.brand + ' ' + p.name)}">`;
+  }
+}
+async function fillItemThumbs(scope) {
+  const gen = thumbGen;
+  for (const el of document.querySelectorAll(`${scope} [data-item]`)) {
+    const it = cart.find(i => i.id === el.dataset.item); if (!it || it.type !== 'product') continue;
+    const p = PRODUCT_BY_ID[it.pid]; if (!p || gen !== thumbGen) continue;
+    const url = await getThumb(p, it.cfg, 400, 300);
+    if (el.isConnected) el.innerHTML = `<img src="${url}" alt="">`;
+  }
+}
+
 // The 3D engine (three.js) loads only when a page needs it, then stays alive across navigations.
 let studio = null, studioP = null;
 const loadStudio = () => studioP || (studioP = import('../engine/studio.js').then(m => (studio = m)));
@@ -29,6 +69,7 @@ document.addEventListener('astro:page-load', async () => {
   if (page === 'cart') renderCart();
   if (page === 'checkout') initCheckout();
   if (page === 'done') renderDone();
+  fillThumbs();
   if (document.querySelector('[data-studio]')) { await loadStudio(); studio.attach(); }
   else if (studio) studio.detach();
 });
@@ -91,8 +132,9 @@ function kbFilter(g) {
 }
 
 /* ---------- Product page ---------- */
-let pd = null;
-function initProduct() {
+let pd = null, viewer = null;
+async function initProduct() {
+  viewer = null;
   const host = $('[data-product]'); if (!host) return;
   const p = PRODUCT_BY_ID[host.dataset.product]; if (!p) return;
   let edit = null;
@@ -103,17 +145,18 @@ function initProduct() {
   $$('[data-q]').forEach(b => b.addEventListener('click', () => { pd.qty = Math.max(1, Math.min(20, pd.qty + +b.dataset.q)); $('#pdQty').textContent = pd.qty; }));
   $('#pdAdd').addEventListener('click', () => {
     const { p, cfg, qty, editId } = pd;
-    upsert({ id: editId || uid(), type: 'product', pid: p.id, name: p.name, lines: summaryOf(p, cfg), price: priceOf(p, cfg), qty, cfg: { ...cfg } });
+    upsert({ id: editId || uid(), type: 'product', pid: p.id, name: `${p.brand} ${p.name}`, lines: summaryOf(p, cfg), price: priceOf(p, cfg), qty, cfg: { ...cfg } });
     toast(editId ? `Updated ${p.name} in your cart` : `Added ${qty > 1 ? qty + ' × ' : ''}${p.name} to the cart`);
     if (editId) navigate(pageUrl('cart'));
   });
   renderOptions(); updatePreview();
+  mountViewer(p);
 }
 function renderOptions() {
   const { p, cfg } = pd, S = getSampleImages();
   $('#pdOpts').innerHTML = p.options.filter(o => !o.showIf || o.showIf(cfg)).map(o => {
     const v = cfg[o.id], head = extra => `<div class="opt-h">${o.label}<span>${extra || ''}</span></div>`;
-    if (o.type === 'swatch') { const cur = o.choices.find(c => c.v === v) || {}; return `<div class="opt">${head(cur.label + (cur.price ? ` · +${money(cur.price)}` : ''))}<div class="swatch-row">${o.choices.map(c => `<button type="button" class="sw" style="background:${c.v}" data-opt="${o.id}" data-v="${c.v}" aria-pressed="${c.v === v}" aria-label="${o.label}: ${c.label}" title="${c.label}${c.price ? ' +' + money(c.price) : ''}"></button>`).join('')}</div></div>`; }
+    if (o.type === 'swatch') { const cur = o.choices.find(c => c.v === v) || {}; return `<div class="opt">${head(cur.label + (cur.stock ? ' · stock' : '') + (cur.price ? ` · +${money(cur.price)}` : ''))}<div class="swatch-row">${o.choices.map(c => `<button type="button" class="sw" style="background:${c.v}" data-opt="${o.id}" data-v="${c.v}" aria-pressed="${c.v === v}" aria-label="${o.label}: ${c.label}" title="${c.label}${c.price ? ' +' + money(c.price) : ''}"></button>`).join('')}</div></div>`; }
     if (o.type === 'choice') return `<div class="opt">${head()}<div class="choice-row">${o.choices.map(c => `<button type="button" class="choice" data-opt="${o.id}" data-v="${escA(c.v)}" aria-pressed="${c.v === v}">${escA(c.label || c.v)}<small>${c.price ? '+' + money(c.price) : 'Included'}</small></button>`).join('')}</div></div>`;
     if (o.type === 'toggle') return `<div class="opt"><label class="toggle-row" for="opt-${o.id}"><span class="opt-h" style="flex:1">${o.label}<span>+${money(o.price)}</span></span><input type="checkbox" class="switch" id="opt-${o.id}" data-opt="${o.id}" ${v ? 'checked' : ''}></label></div>`;
     if (o.type === 'text') return `<div class="opt"><label class="opt-h" for="opt-${o.id}">${o.label}<span>+${money(o.price)} when added</span></label><input type="text" id="opt-${o.id}" data-opt="${o.id}" maxlength="${o.max}" placeholder="${o.placeholder}" value="${escA(v || '')}" autocomplete="off"></div>`;
@@ -145,12 +188,21 @@ function renderOptions() {
   });
 }
 function updatePreview() {
-  $('#pdStage').innerHTML = artSVG(pd.p, pd.cfg, printSrc);
+  if (viewer && viewer.canvas.isConnected) viewer.show(pd.p, pd.cfg);
+  else if (!viewer) $('#pdStage').innerHTML = artSVG(pd.p, pd.cfg, printSrc);
   $('#pdPrice').textContent = money(priceOf(pd.p, pd.cfg));
+}
+async function mountViewer(p) {
+  const { createViewer } = await load3d();
+  const stage = $('#pdStage'); if (!stage || !pd || pd.p !== p) return;
+  stage.innerHTML = '';
+  viewer = createViewer(stage);
+  stage.insertAdjacentHTML('beforeend', '<span class="pd-hint">Drag to turn · scroll to zoom</span>');
+  viewer.show(pd.p, pd.cfg);
 }
 
 /* ---------- Cart ---------- */
-const thumbOf = i => i.type === 'board' ? (i.thumb ? `<img src="${i.thumb}" alt="">` : boardSVG(i.model)) : artSVG(PRODUCT_BY_ID[i.pid], i.cfg, printSrc);
+const thumbOf = i => i.type === 'board' ? (i.thumb ? `<img src="${i.thumb}" alt="">` : boardSVG(i.model)) : (PRODUCT_BY_ID[i.pid] ? `<span class="thumb-slot" data-item="${i.id}">${artSVG(PRODUCT_BY_ID[i.pid], i.cfg, printSrc)}</span>` : '');
 function renderCart() {
   const v = $('#cartView'); if (!v) return;
   if (!cart.length) { v.innerHTML = `<div class="empty-cart"><h2>Your cart is empty</h2><p class="lede">Design a keyboard or pick an accessory to get started.</p><div class="row-btns"><a class="btn primary" href="${pageUrl('keyboards')}">Design a keyboard</a><a class="btn" href="${pageUrl('shop')}">Shop accessories</a></div></div>`; return; }
@@ -165,6 +217,7 @@ function renderCart() {
       ${ship ? `<p class="note" style="margin:0">Free standard shipping on orders over $150.</p>` : ''}
       <div class="sum-row total"><span>Total</span><span>${money(sub + ship)}</span></div>
       <a class="btn primary lg" href="${pageUrl('checkout')}" style="justify-content:center">Checkout</a></aside></div>`;
+  fillItemThumbs('#cartView');
   $$('#cartView .ci').forEach(row => row.addEventListener('click', async e => {
     const act = e.target.closest('[data-act]'); if (!act) return;
     const i = cart.findIndex(c => c.id === row.dataset.id); if (i < 0) return;
@@ -201,6 +254,7 @@ function renderSummary() {
   $('#coSummary').innerHTML = `<h2>Order summary</h2>${cart.map(i => `<div class="mini"><div class="ci-thumb">${thumbOf(i)}</div><div>${escA(i.name)}${i.qty > 1 ? ` × ${i.qty}` : ''}</div><strong>${money(i.price * i.qty)}</strong></div>`).join('')}
     <div class="sum-row"><span>Subtotal</span><span>${money(sub)}</span></div><div class="sum-row"><span>Shipping</span><span>${ship ? money(ship) : 'Free'}</span></div>
     <div class="sum-row total"><span>Total</span><span>${money(sub + ship)}</span></div>`;
+  fillItemThumbs('#coSummary');
 }
 function placeOrder(e) {
   e.preventDefault();
