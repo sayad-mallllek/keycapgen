@@ -18,11 +18,11 @@ Requires Node 18.20+ (tested with Node 22).
 
 | Route | What it does |
 |---|---|
-| `/` | Home: live 3D preview of the shopper's current board, categories, featured boards, keycap sets |
+| `/` | Home: featured board, categories, featured keyboards, keycap sets |
 | `/shop` | All products with category filters and price sorting |
-| `/keyboards` | The nine keyboard models, filterable by layout |
-| `/products/[id]` | One page per accessory (built from `src/data/products.js`) with a 360° 3D model and options |
-| `/customize` | The full 3D keyboard customizer, with live price and add to cart |
+| `/keyboards` | The nine keyboard models with maker photos per colorway, filterable by layout |
+| `/products/[id]` | One page per accessory (built from `src/data/products.js`): photo gallery per colorway, add-ons, price |
+| `/customize` | The full 3D keyboard customizer (the only 3D page), with live price and add to cart |
 | `/cart`, `/checkout`, `/order-placed` | Cart (kept in localStorage), prototype checkout and confirmation |
 
 ## View transitions
@@ -30,7 +30,7 @@ Requires Node 18.20+ (tested with Node 22).
 `src/layouts/Base.astro` adds Astro's `<ClientRouter />`, so every link navigates with the browser's View Transitions API instead of a full reload:
 
 - **Page content** slides up and fades in (a custom `transition:animate` on `<main>`); going back reverses the direction.
-- **The 3D stage** morphs between pages: the home hero, the art on a keyboard card and the customizer viewport all share `view-transition-name: studio-stage`.
+- **The 3D stage** morphs in: the home hero photo or a keyboard card photo grows into the customizer viewport (`view-transition-name: studio-stage`).
 - **Product cards** morph into the product page: card art → large preview (`prod-<id>`), card title → page heading (`prod-title-<id>`).
 - **The nav** is `transition:persist`, so it stays put and keeps the cart badge.
 - `prefers-reduced-motion` turns the animations off.
@@ -38,19 +38,20 @@ Requires Node 18.20+ (tested with Node 22).
 ## How the 3D engine survives navigation
 
 The customizer (`src/engine/studio.js`) is loaded on demand the first time a page needs it, then stays alive for the rest of the visit.
-It builds its own UI from `studio-ui.html` once and keeps it in memory. Pages only provide a mount point (`data-studio="hero"` or `data-studio="customize"`), and on each `astro:after-swap` the engine moves its canvas and panels into the new page. That happens before the new view-transition snapshot is taken, so the hero ↔ customizer morph shows the live board. Edits, undo history and the WebGL scene all carry across pages.
+It builds its own UI from `studio-ui.html` once and keeps it in memory. The customizer page provides a mount point (`data-studio="customize"`), and on each `astro:after-swap` the engine moves its canvas and panels into it, before the new view-transition snapshot is taken. Edits, undo history and the WebGL scene carry across pages.
 
 ## Project layout
 
 ```
 src/
   data/keyboards.js   layouts, keycap profiles, 9 models, 21 keycap sets + stock finishes (pure data)
-  data/products.js    accessory catalog (10 real products), options and pricing
-  lib/svg.js          product and keyboard illustrations as SVG (rendered at build time and live in the browser)
+  data/products.js    accessory catalog (10 real products): colorways with maker photos, add-ons, pricing
+  data/kbPhotos.js    maker photos for each keyboard edition
+  lib/photo.js        photo markup with a drawn fallback when a photo can't load
+  lib/svg.js          product and keyboard drawings (fallback for photos; keycap-set previews)
   lib/samples.js      procedural print/skin images (canvas)
   lib/cart.js         cart storage, toast, page-URL helper
   lib/util.js         money formatting and color helpers
-  engine/products3d.js procedural 3D models of the accessories, product viewer and thumbnail renderer
   engine/studio.js    three.js scene + customizer (drawing, skins, isolation, demo…)
   engine/studio-ui.html  the customizer's markup
   scripts/site.js     page setup on every navigation (shop filters, product options, cart, checkout)
@@ -64,6 +65,6 @@ src/
 
 - Prices, products and delivery options are placeholders.
 - Checkout is a prototype: it validates the form and shows a confirmation; no payment is taken and nothing is sent anywhere.
-- Accessories are real products (Logitech, Razer, SteelSeries, Grovemade…) modeled procedurally from their published dimensions. Card and cart images are rendered from the same 3D models.
+- Product photos are loaded from the makers' own sites (Logitech, Razer, SteelSeries, Keychron, Grovemade, Wooting, PFU, NuPhy). They belong to those companies: a live store needs their permission or reseller assets, ideally self-hosted. If a photo can't load, the page shows a drawing instead.
 - Keyboard models are simplified illustrations; Keycap Studio is not affiliated with the brands shown. Keycap set colors approximate well-known GMK, SA and ePBT sets.
 - The cart and the current design are stored in the visitor's browser (localStorage).

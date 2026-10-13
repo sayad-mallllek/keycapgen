@@ -1,18 +1,31 @@
 ---
 import { boardSVG } from '../lib/svg.js';
-import { MODELS, PROFILES } from '../data/keyboards.js';
-import { money } from '../lib/util.js';
+import { photoHTML } from '../lib/photo.js';
+import { MODELS, PROFILES, COLORWAYS } from '../data/keyboards.js';
+import { kbPhotos } from '../data/kbPhotos.js';
+import { money, escA } from '../lib/util.js';
 const { mid, order = 0 } = Astro.props;
 const M = MODELS[mid];
 const group = M.layout.startsWith('60') ? '60%' : M.layout.startsWith('75') ? '75%' : M.layout === 'TKL' ? 'TKL' : '100%';
+// Stock editions with their maker photos (our own design has none and keeps its drawing)
+const eds = M.editionIds.map(id => ({ id, cw: COLORWAYS[id], slug: id.includes(':') ? id.split(':')[1] : id }))
+  .map(e => ({ ...e, photos: kbPhotos(mid, e.slug) }));
+const first = eds[0];
+const media = photoHTML(first.photos && first.photos[0], `${M.name} in ${first.cw.name}`, boardSVG(mid, first.id));
 ---
-<article class="card" data-cat="keyboards" data-layout={group} data-price={M.price} data-order={order}>
-  <a class="card-media" href="/customize" data-model={mid} aria-label={`Customize ${M.name}`} set:html={boardSVG(mid)} />
+<article class="card" data-cat="keyboards" data-layout={group} data-price={M.price} data-order={order} data-mid={mid} data-edition={first.id}>
+  <a class="card-media" href="/customize" data-model={mid} aria-label={`Customize ${M.name}`} set:html={media} />
   <div class="card-body">
     <div class="card-cat">Keyboards · {M.layout}</div>
     <h3><a href="/customize" data-model={mid}>{M.name}</a></h3>
+    {eds.length > 1 && (
+      <div class="card-vars" role="group" aria-label={`${M.name} colors`}>
+        {eds.map((e, i) => <button type="button" class="dot" data-kbed={e.id} data-src={e.photos ? e.photos[0] : ''} data-label={e.cw.name} style={`background:${e.cw.case}`} aria-pressed={i === 0 ? 'true' : 'false'} aria-label={e.cw.name} title={e.cw.name}></button>)}
+        <span class="dot-label">{first.cw.name}</span>
+      </div>
+    )}
     <p>{M.signature}</p>
     <div class="specline"><span>{M.switches.split(',')[0]}</span><span>{PROFILES[M.profile].name}</span></div>
-    <div class="card-foot"><span class="price"><small>from</small>{money(M.price)}</span><a class="btn small primary" href="/customize" data-model={mid}>Customize</a></div>
+    <div class="card-foot"><span class="price"><small>from</small>{money(M.price)}</span><a class="btn small primary" href="/customize" data-model={mid}>Customize in 3D</a></div>
   </div>
 </article>

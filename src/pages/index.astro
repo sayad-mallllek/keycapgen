@@ -4,12 +4,16 @@ import BoardCard from '../components/BoardCard.astro';
 import { MODELS, COLORWAYS, GENERIC_IDS } from '../data/keyboards.js';
 import { CATS, PRODUCT_BY_ID } from '../data/products.js';
 import { artSVG, boardSVG } from '../lib/svg.js';
+import { photoHTML } from '../lib/photo.js';
+import { kbPhotos } from '../data/kbPhotos.js';
+import { photosOf, defaultsOf } from '../data/products.js';
+// Category tiles and the hero use the makers' product photos, with drawings as the fallback
+const prodTile = id => { const p = PRODUCT_BY_ID[id]; return photoHTML(photosOf(p, defaultsOf(p))[0], `${p.brand} ${p.name}`, artSVG(p)); };
 const catArt = {
-  keyboards: boardSVG('q1max'), mice: artSVG(PRODUCT_BY_ID['pro-x-superlight-2']), mats: artSVG(PRODUCT_BY_ID['qck-heavy-xxl']),
-  audio: artSVG(PRODUCT_BY_ID['arctis-nova-pro-omni']), cables: artSVG(PRODUCT_BY_ID['coiled-aviator-cable']),
+  keyboards: photoHTML(kbPhotos('q1max', 'carbon')[0], 'Keychron Q1 Max', boardSVG('q1max')), mice: prodTile('pro-x-superlight-2'), mats: prodTile('qck-heavy-xxl'),
+  audio: prodTile('arctis-nova-pro-omni'), cables: prodTile('coiled-aviator-cable'),
 };
-// Category tiles show a 3D render of one real product (swapped in by the browser)
-const catThumb = { mice: 'pro-x-superlight-2', mats: 'qck-heavy-xxl', audio: 'arctis-nova-pro-omni', cables: 'coiled-aviator-cable' };
+const heroArt = photoHTML(kbPhotos('q1max', 'shell')[0], 'Keychron Q1 Max in Shell White', boardSVG('q1max', 'q1max:shell'), true);
 ---
 <Base page="home">
   <section class="page">
@@ -25,9 +29,10 @@ const catThumb = { mice: 'pro-x-superlight-2', mats: 'qck-heavy-xxl', audio: 'ar
           <div><dt>360°</dt><dd>art on every key side</dd></div>
         </dl>
       </div>
-      <div class="hero-stage" data-studio="hero">
-        <span class="hero-tag" id="heroTag">Live preview</span>
-        <a class="btn primary hero-edit" href="/customize">Edit this board</a>
+      <div class="hero-stage hero-photo">
+        <div class="hero-media" set:html={heroArt} />
+        <span class="hero-tag">Keychron Q1 Max · Shell White</span>
+        <a class="btn primary hero-edit" href="/customize" data-model="q1max" data-edition="q1max:shell">Customize this board in 3D</a>
       </div>
     </div>
 
@@ -36,7 +41,7 @@ const catThumb = { mice: 'pro-x-superlight-2', mats: 'qck-heavy-xxl', audio: 'ar
       <div class="cats">
         {CATS.map(c => (
           <a class="cat" href={c.id === 'keyboards' ? '/keyboards' : '/shop'} data-cat={c.id}>
-            <div class="art" data-thumb={catThumb[c.id]} set:html={catArt[c.id]} />
+            <div class="art" set:html={catArt[c.id]} />
             <strong>{c.name}</strong><span>{c.blurb}</span>
           </a>
         ))}

@@ -1,17 +1,28 @@
 ---
 import { artSVG } from '../lib/svg.js';
-import { CATS } from '../data/products.js';
+import { photoHTML } from '../lib/photo.js';
+import { CATS, defaultsOf, variantOf } from '../data/products.js';
 import { money } from '../lib/util.js';
 const { p, order = 0 } = Astro.props;
 const cat = CATS.find(c => c.id === p.cat).name;
+const vo = p.options.find(o => o.id === p.gallery), vc = variantOf(p, defaultsOf(p));
+const colored = vo.choices.every(c => c.hex);
+const addons = p.options.filter(o => o.type === 'toggle' || o.type === 'text').length;
+const media = photoHTML(vc.images[0], `${p.brand} ${p.name}, ${vc.v}`, artSVG(p));
 ---
 <article class="card" data-cat={p.cat} data-price={p.price} data-order={order} data-pid={p.id}>
-  <a class="card-media" href={`/products/${p.id}`} aria-label={p.name} transition:name={`prod-${p.id}`} set:html={artSVG(p)} />
+  <a class="card-media" href={`/products/${p.id}`} aria-label={p.name} transition:name={`prod-${p.id}`} set:html={media} />
   <div class="card-body">
     <div class="card-cat">{cat} · {p.brand}</div>
     <h3><a href={`/products/${p.id}`} transition:name={`prod-title-${p.id}`}>{p.name}</a></h3>
+    {colored && vo.choices.length > 1 && (
+      <div class="card-vars" role="group" aria-label={`${p.name} ${vo.label.toLowerCase()}`}>
+        {vo.choices.map(c => <button type="button" class="dot" data-pvar={c.v} data-src={c.images[0]} data-label={c.v} style={`background:${c.hex}`} aria-pressed={c.v === vc.v ? 'true' : 'false'} aria-label={c.v} title={c.v}></button>)}
+        <span class="dot-label">{vc.v}</span>
+      </div>
+    )}
     <p>{p.tag}</p>
-    <div class="specline"><span>3D model</span><span>{p.options.length} custom options</span></div>
-    <div class="card-foot"><span class="price"><small>from</small>{money(p.price)}</span><a class="btn small" href={`/products/${p.id}`}>Customize</a></div>
+    <div class="specline"><span>{vo.choices.length} {colored ? (vo.id === 'wood' ? 'woods' : 'colors') : 'sizes'}</span>{addons > 0 && <span>{addons === 1 ? '1 add-on' : `${addons} add-ons`}</span>}</div>
+    <div class="card-foot"><span class="price"><small>from</small>{money(p.price + Math.min(0, ...vo.choices.map(c => c.price || 0)))}</span><a class="btn small" href={`/products/${p.id}`}>Choose options</a></div>
   </div>
 </article>

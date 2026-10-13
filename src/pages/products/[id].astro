@@ -1,13 +1,16 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { PRODUCTS, CATS } from '../../data/products.js';
+import { PRODUCTS, CATS, defaultsOf, variantOf } from '../../data/products.js';
 import { artSVG } from '../../lib/svg.js';
+import { photoHTML } from '../../lib/photo.js';
 import { money } from '../../lib/util.js';
 export function getStaticPaths() {
   return PRODUCTS.map(p => ({ params: { id: p.id }, props: { p } }));
 }
 const { p } = Astro.props;
 const cat = CATS.find(c => c.id === p.cat).name;
+const vc = variantOf(p, defaultsOf(p));
+const main = photoHTML(vc.images[0], `${p.brand} ${p.name}, ${vc.v}`, artSVG(p), true);
 ---
 <Base title={p.name} description={p.blurb} page="product">
   <section class="page">
@@ -15,8 +18,9 @@ const cat = CATS.find(c => c.id === p.cat).name;
       <a class="back" href="/shop">← Back to shop</a>
       <div class="pd" data-product={p.id}>
         <div class="pd-media">
-          <div class="pd-stage" id="pdStage" transition:name={`prod-${p.id}`} set:html={artSVG(p)} />
-          <p class="note">3D model built from the published dimensions. Colors are shown as close as a screen allows. Keycap Studio customizes this product and is not affiliated with {p.brand}.</p>
+          <div class="pd-stage" id="pdStage" transition:name={`prod-${p.id}`} set:html={main} />
+          <div class="pd-thumbs" id="pdThumbs" role="group" aria-label="Photos"></div>
+          <p class="note">Product photos from <a href={p.source} target="_blank" rel="noopener">{p.brand}</a>. Keycap Studio adds the options below and is not affiliated with {p.brand}.</p>
         </div>
         <div class="pd-info">
           <div class="card-cat">{cat} · {p.brand}</div>
@@ -31,7 +35,7 @@ const cat = CATS.find(c => c.id === p.cat).name;
           </div>
           <dl class="specs">
             {p.specs.map(([a, b]) => <><dt>{a}</dt><dd>{b}</dd></>)}
-            <dt>Made to order</dt><dd>Built to your configuration</dd>
+            {p.options.some(o => o.type === 'toggle' || o.type === 'text') && <><dt>Add-ons</dt><dd>Applied by Keycap Studio before shipping</dd></>}
           </dl>
         </div>
       </div>

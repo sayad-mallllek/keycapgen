@@ -3,61 +3,21 @@
 // Clicks are handled by delegation on `document`, which survives page swaps.
 import { navigate } from 'astro:transitions/client';
 import { cart, saveCart, upsert, clearCart, cartTotal, shippingFor, refreshBadge, toast, pageUrl } from '../lib/cart.js';
-import { CATS, PRODUCT_BY_ID, PRINTS, defaultsOf, priceOf, summaryOf } from '../data/products.js';
+import { PRODUCT_BY_ID, defaultsOf, priceOf, summaryOf, variantOf, photosOf } from '../data/products.js';
 import { artSVG, boardSVG } from '../lib/svg.js';
-import { getSampleImages } from '../lib/samples.js';
+import { photoHTML, markBrokenPhotos } from '../lib/photo.js';
+import { MODELS } from '../data/keyboards.js';
 import { money, uid, escA } from '../lib/util.js';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
-const printSrc = id => getSampleImages()[id] || null;
-
-// Real-product 3D models (viewer on product pages, rendered thumbnails for cards and the cart)
-let p3d = null;
-const load3d = () => p3d || (p3d = import('../engine/products3d.js'));
-async function getThumb(p, cfg, w = 560, h = 420) {
-  const key = 'ks-t:' + p.id + ':' + w + ':' + JSON.stringify(cfg);
-  const cacheable = key.length < 3000;   // skip session caching for configs that carry an uploaded image
-  if (cacheable) { try { const hit = sessionStorage.getItem(key); if (hit) return hit; } catch (e) {} }
-  const { thumbnail } = await load3d();
-  const url = await thumbnail(p, cfg, w, h);
-  if (cacheable) { try { sessionStorage.setItem(key, url); } catch (e) {} }
-  return url;
-}
-// Swap the build-time illustrations for renders of the 3D models
-// Renders yield to idle time and stop as soon as a navigation starts, so they never hold up a page change
-let thumbGen = 0;
-document.addEventListener('astro:before-preparation', () => { thumbGen++; });
-const idle = () => new Promise(r => (window.requestIdleCallback ? requestIdleCallback(r, { timeout: 600 }) : setTimeout(r, 60)));
-async function fillThumbs() {
-  const gen = thumbGen;
-  await idle();
-  const els = [...document.querySelectorAll('.card[data-pid] .card-media, [data-thumb]')];
-  for (const el of els) {
-    if (gen !== thumbGen) return;
-    const pid = el.dataset.thumb || (el.closest('[data-pid]') || {}).dataset?.pid, p = PRODUCT_BY_ID[pid]; if (!p) continue;
-    const url = await getThumb(p, defaultsOf(p));
-    if (gen !== thumbGen) return;
-    await idle();
-    if (el.isConnected) el.innerHTML = `<img src="${url}" alt="${escA(p.brand + ' ' + p.name)}">`;
-  }
-}
-async function fillItemThumbs(scope) {
-  const gen = thumbGen;
-  for (const el of document.querySelectorAll(`${scope} [data-item]`)) {
-    const it = cart.find(i => i.id === el.dataset.item); if (!it || it.type !== 'product') continue;
-    const p = PRODUCT_BY_ID[it.pid]; if (!p || gen !== thumbGen) continue;
-    const url = await getThumb(p, it.cfg, 400, 300);
-    if (el.isConnected) el.innerHTML = `<img src="${url}" alt="">`;
-  }
-}
 
 // The 3D engine (three.js) loads only when a page needs it, then stays alive across navigations.
 let studio = null, studioP = null;
 const loadStudio = () => studioP || (studioP = import('../engine/studio.js').then(m => (studio = m)));
 
 // Mount the engine synchronously right after the DOM swap, so the view transition's
-// "new" snapshot already shows the 3D canvas in its new place (hero <-> customizer morph).
+// "new" snapshot already shows the 3D canvas in place (keyboard photo -> customizer morph).
 document.addEventListener('astro:after-swap', () => { if (studio) studio.attach(); });
 
 document.addEventListener('astro:page-load', async () => {
@@ -69,7 +29,7 @@ document.addEventListener('astro:page-load', async () => {
   if (page === 'cart') renderCart();
   if (page === 'checkout') initCheckout();
   if (page === 'done') renderDone();
-  fillThumbs();
+  markBrokenPhotos();
   if (document.querySelector('[data-studio]')) { await loadStudio(); studio.attach(); }
   else if (studio) studio.detach();
 });
@@ -89,12 +49,30 @@ document.addEventListener('click', async e => {
   const m = e.target.closest('[data-model]');
   if (m) {
     e.preventDefault();
-    const card = m.closest('.card'), media = card && card.querySelector('.card-media');
-    const hero = $('.hero-stage');
-    if (hero) hero.style.viewTransitionName = 'none';
+    const card = m.closest('.card'), media = card ? card.querySelector('.card-media') : m.closest('.hero-stage');
+    $$('.hero-stage').forEach(h => { h.style.viewTransitionName = 'none'; });
     if (media) media.style.viewTransitionName = 'studio-stage';
+    const edition = m.dataset.edition || (card && card.dataset.edition);
     await loadStudio(); studio.selectModel(m.dataset.model);
+    if (edition) studio.applyColorway(edition);
     navigate(pageUrl('customize'));
+    return;
+  }
+  // Color dots on keyboard and product cards swap the card photo
+  const dot = e.target.closest('.card-vars .dot');
+  if (dot) {
+    const card = dot.closest('.card'), media = card.querySelector('.card-media');
+    card.querySelectorAll('.card-vars .dot').forEach(d => d.setAttribute('aria-pressed', String(d === dot)));
+    card.querySelector('.dot-label').textContent = dot.dataset.label;
+    if (dot.dataset.kbed) {
+      card.dataset.edition = dot.dataset.kbed;
+      const M = MODELS[card.dataset.mid];
+      media.innerHTML = photoHTML(dot.dataset.src, `${M.name} in ${dot.dataset.label}`, boardSVG(card.dataset.mid, dot.dataset.kbed));
+    } else {
+      const p = PRODUCT_BY_ID[card.dataset.pid];
+      media.innerHTML = photoHTML(dot.dataset.src, `${p.brand} ${p.name}, ${dot.dataset.label}`, artSVG(p, { [p.gallery]: dot.dataset.pvar }));
+      try { sessionStorage.setItem('ks-pvar:' + p.id, dot.dataset.pvar); } catch (err) {}
+    }
     return;
   }
   const set = e.target.closest('[data-set]');
@@ -132,14 +110,16 @@ function kbFilter(g) {
 }
 
 /* ---------- Product page ---------- */
-let pd = null, viewer = null;
-async function initProduct() {
-  viewer = null;
+let pd = null;
+function initProduct() {
   const host = $('[data-product]'); if (!host) return;
   const p = PRODUCT_BY_ID[host.dataset.product]; if (!p) return;
-  let edit = null;
+  let edit = null, pvar = null;
   try { const id = sessionStorage.getItem('ks-edit'); if (id) { edit = cart.find(i => i.id === id && i.pid === p.id); sessionStorage.removeItem('ks-edit'); } } catch (e) {}
-  pd = { p, cfg: edit ? { ...defaultsOf(p), ...edit.cfg } : defaultsOf(p), qty: edit ? edit.qty : 1, editId: edit ? edit.id : null };
+  try { pvar = sessionStorage.getItem('ks-pvar:' + p.id); sessionStorage.removeItem('ks-pvar:' + p.id); } catch (e) {}
+  const cfg = edit ? { ...defaultsOf(p), ...edit.cfg } : defaultsOf(p);
+  if (!edit && pvar && p.options.find(o => o.id === p.gallery).choices.some(c => c.v === pvar)) cfg[p.gallery] = pvar;
+  pd = { p, cfg, qty: edit ? edit.qty : 1, editId: edit ? edit.id : null, shot: 0, shown: null };
   $('#pdQty').textContent = pd.qty;
   $('#pdAdd').textContent = pd.editId ? 'Update cart item' : 'Add to cart';
   $$('[data-q]').forEach(b => b.addEventListener('click', () => { pd.qty = Math.max(1, Math.min(20, pd.qty + +b.dataset.q)); $('#pdQty').textContent = pd.qty; }));
@@ -149,21 +129,17 @@ async function initProduct() {
     toast(editId ? `Updated ${p.name} in your cart` : `Added ${qty > 1 ? qty + ' × ' : ''}${p.name} to the cart`);
     if (editId) navigate(pageUrl('cart'));
   });
+  $('#pdThumbs').addEventListener('click', e => { const b = e.target.closest('[data-shot]'); if (b) { pd.shot = +b.dataset.shot; renderGallery(true); } });
   renderOptions(); updatePreview();
-  mountViewer(p);
 }
 function renderOptions() {
-  const { p, cfg } = pd, S = getSampleImages();
-  $('#pdOpts').innerHTML = p.options.filter(o => !o.showIf || o.showIf(cfg)).map(o => {
+  const { p, cfg } = pd;
+  $('#pdOpts').innerHTML = p.options.map(o => {
     const v = cfg[o.id], head = extra => `<div class="opt-h">${o.label}<span>${extra || ''}</span></div>`;
-    if (o.type === 'swatch') { const cur = o.choices.find(c => c.v === v) || {}; return `<div class="opt">${head(cur.label + (cur.stock ? ' · stock' : '') + (cur.price ? ` · +${money(cur.price)}` : ''))}<div class="swatch-row">${o.choices.map(c => `<button type="button" class="sw" style="background:${c.v}" data-opt="${o.id}" data-v="${c.v}" aria-pressed="${c.v === v}" aria-label="${o.label}: ${c.label}" title="${c.label}${c.price ? ' +' + money(c.price) : ''}"></button>`).join('')}</div></div>`; }
-    if (o.type === 'choice') return `<div class="opt">${head()}<div class="choice-row">${o.choices.map(c => `<button type="button" class="choice" data-opt="${o.id}" data-v="${escA(c.v)}" aria-pressed="${c.v === v}">${escA(c.label || c.v)}<small>${c.price ? '+' + money(c.price) : 'Included'}</small></button>`).join('')}</div></div>`;
+    if (o.type === 'variant' && o.choices.every(c => c.hex)) { const cur = o.choices.find(c => c.v === v) || {}; return `<div class="opt">${head(cur.v + (cur.price ? ` · +${money(cur.price)}` : ''))}<div class="swatch-row">${o.choices.map(c => `<button type="button" class="sw" style="background:${c.hex}" data-opt="${o.id}" data-v="${escA(c.v)}" aria-pressed="${c.v === v}" aria-label="${o.label}: ${escA(c.v)}" title="${escA(c.v)}${c.price ? ' +' + money(c.price) : ''}"></button>`).join('')}</div></div>`; }
+    if (o.type === 'choice' || o.type === 'variant') return `<div class="opt">${head()}<div class="choice-row">${o.choices.map(c => `<button type="button" class="choice" data-opt="${o.id}" data-v="${escA(c.v)}" aria-pressed="${c.v === v}">${escA(c.label || c.v)}<small>${c.price ? (c.price > 0 ? '+' : '−') + money(Math.abs(c.price)) : 'Included'}</small></button>`).join('')}</div></div>`;
     if (o.type === 'toggle') return `<div class="opt"><label class="toggle-row" for="opt-${o.id}"><span class="opt-h" style="flex:1">${o.label}<span>+${money(o.price)}</span></span><input type="checkbox" class="switch" id="opt-${o.id}" data-opt="${o.id}" ${v ? 'checked' : ''}></label></div>`;
     if (o.type === 'text') return `<div class="opt"><label class="opt-h" for="opt-${o.id}">${o.label}<span>+${money(o.price)} when added</span></label><input type="text" id="opt-${o.id}" data-opt="${o.id}" maxlength="${o.max}" placeholder="${o.placeholder}" value="${escA(v || '')}" autocomplete="off"></div>`;
-    if (o.type === 'print') return `<div class="opt">${head()}<div class="print-row">${PRINTS.map(([id, name]) => `<button type="button" class="print" data-opt="print" data-v="${id}" aria-pressed="${v === id}" style="background-image:url(${S[id]})" aria-label="${name}" title="${name}"></button>`).join('')}
-      <button type="button" class="print" data-opt="print" data-v="solid" aria-pressed="${v === 'solid'}">Solid</button>
-      <label class="print" for="matUpload" aria-pressed="${v === 'upload'}" style="cursor:pointer;${cfg.printImg ? `background-image:url(${cfg.printImg})` : ''}">${cfg.printImg ? '' : 'Your image'}</label>
-      <input type="file" id="matUpload" accept="image/*" class="sr-only"></div><p class="note" style="margin:0">Uploads are cropped to fill the mat.</p></div>`;
     return '';
   }).join('');
   $$('#pdOpts [data-opt]').forEach(el => {
@@ -174,35 +150,25 @@ function renderOptions() {
       updatePreview();
     });
   });
-  const up = $('#matUpload');
-  if (up) up.addEventListener('change', e => {
-    const f = e.target.files && e.target.files[0]; if (!f || !/^image\//.test(f.type)) return;
-    const r = new FileReader();
-    r.onload = () => { const img = new Image(); img.onload = () => {
-      const sc = Math.min(1, 1400 / Math.max(img.naturalWidth || 1400, img.naturalHeight || 1400)), c = document.createElement('canvas');
-      c.width = Math.max(1, Math.round((img.naturalWidth || 1400) * sc)); c.height = Math.max(1, Math.round((img.naturalHeight || 1400) * sc));
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      cfg.printImg = c.toDataURL('image/jpeg', 0.85); cfg.print = 'upload'; renderOptions(); updatePreview();
-    }; img.src = r.result; };
-    r.readAsDataURL(f);
-  });
+}
+// Main photo plus a strip of the chosen variant's other photos
+function renderGallery(force) {
+  const { p, cfg } = pd, vc = variantOf(p, cfg), shots = vc.images;
+  if (pd.shown !== vc.v) { pd.shown = vc.v; pd.shot = 0; force = true; }
+  if (!force) return;
+  const i = Math.min(pd.shot, shots.length - 1);
+  $('#pdStage').innerHTML = photoHTML(shots[i], `${p.brand} ${p.name}, ${vc.v}, photo ${i + 1} of ${shots.length}`, artSVG(p, cfg), true);
+  $('#pdThumbs').innerHTML = shots.length > 1 ? shots.map((u, k) => `<button type="button" class="pd-thumb" data-shot="${k}" aria-pressed="${k === i}" aria-label="Photo ${k + 1}">${photoHTML(u, '', '')}</button>`).join('') : '';
 }
 function updatePreview() {
-  if (viewer && viewer.canvas.isConnected) viewer.show(pd.p, pd.cfg);
-  else if (!viewer) $('#pdStage').innerHTML = artSVG(pd.p, pd.cfg, printSrc);
+  renderGallery(false);
   $('#pdPrice').textContent = money(priceOf(pd.p, pd.cfg));
-}
-async function mountViewer(p) {
-  const { createViewer } = await load3d();
-  const stage = $('#pdStage'); if (!stage || !pd || pd.p !== p) return;
-  stage.innerHTML = '';
-  viewer = createViewer(stage);
-  stage.insertAdjacentHTML('beforeend', '<span class="pd-hint">Drag to turn · scroll to zoom</span>');
-  viewer.show(pd.p, pd.cfg);
 }
 
 /* ---------- Cart ---------- */
-const thumbOf = i => i.type === 'board' ? (i.thumb ? `<img src="${i.thumb}" alt="">` : boardSVG(i.model)) : (PRODUCT_BY_ID[i.pid] ? `<span class="thumb-slot" data-item="${i.id}">${artSVG(PRODUCT_BY_ID[i.pid], i.cfg, printSrc)}</span>` : '');
+const thumbOf = i => { if (i.type === 'board') return i.thumb ? `<img src="${i.thumb}" alt="">` : boardSVG(i.model);
+  const p = PRODUCT_BY_ID[i.pid]; if (!p) return '';
+  let cfg = { ...defaultsOf(p), ...i.cfg }; return photoHTML(photosOf(p, cfg)[0], '', artSVG(p, cfg)); };
 function renderCart() {
   const v = $('#cartView'); if (!v) return;
   if (!cart.length) { v.innerHTML = `<div class="empty-cart"><h2>Your cart is empty</h2><p class="lede">Design a keyboard or pick an accessory to get started.</p><div class="row-btns"><a class="btn primary" href="${pageUrl('keyboards')}">Design a keyboard</a><a class="btn" href="${pageUrl('shop')}">Shop accessories</a></div></div>`; return; }
@@ -217,7 +183,6 @@ function renderCart() {
       ${ship ? `<p class="note" style="margin:0">Free standard shipping on orders over $150.</p>` : ''}
       <div class="sum-row total"><span>Total</span><span>${money(sub + ship)}</span></div>
       <a class="btn primary lg" href="${pageUrl('checkout')}" style="justify-content:center">Checkout</a></aside></div>`;
-  fillItemThumbs('#cartView');
   $$('#cartView .ci').forEach(row => row.addEventListener('click', async e => {
     const act = e.target.closest('[data-act]'); if (!act) return;
     const i = cart.findIndex(c => c.id === row.dataset.id); if (i < 0) return;
@@ -254,7 +219,6 @@ function renderSummary() {
   $('#coSummary').innerHTML = `<h2>Order summary</h2>${cart.map(i => `<div class="mini"><div class="ci-thumb">${thumbOf(i)}</div><div>${escA(i.name)}${i.qty > 1 ? ` × ${i.qty}` : ''}</div><strong>${money(i.price * i.qty)}</strong></div>`).join('')}
     <div class="sum-row"><span>Subtotal</span><span>${money(sub)}</span></div><div class="sum-row"><span>Shipping</span><span>${ship ? money(ship) : 'Free'}</span></div>
     <div class="sum-row total"><span>Total</span><span>${money(sub + ship)}</span></div>`;
-  fillItemThumbs('#coSummary');
 }
 function placeOrder(e) {
   e.preventDefault();

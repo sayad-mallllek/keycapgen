@@ -1,7 +1,7 @@
 // Product illustrations as inline SVG strings, generated from each configuration.
 // Pure functions: Astro renders them at build time and the browser re-renders them live.
 import { MODELS, COLORWAYS } from '../data/keyboards.js';
-import { PRODUCTS, defaultsOf } from '../data/products.js';
+import { PRODUCTS, defaultsOf, variantOf, choiceOf } from '../data/products.js';
 import { escA, lum, shade, inkOn } from './util.js';
 let svgSeq = 0;
 
@@ -17,14 +17,14 @@ function printFallback(kind, x, y, w, h, id) {
 
 export function artSVG(p, cfg, printSrc = null) {
   const o = { ...defaultsOf(p), ...(cfg || {}) }, id = 'a' + (svgSeq++);
-  // map each real product's options onto the generic illustration
-  const ch = k => { const op = p.options.find(x => x.id === k); return op && op.choices ? op.choices.find(c => c.v === o[k]) : null; };
-  if (p.kind === 'mouse-ergo') o.side = o.thumb || o.shell;
-  if (p.kind === 'mat') { o._dims = (ch('size') || {}).mm; if (p.model === 'felt') { o.print = 'solid'; o.color = o.felt; } o._stitch = o.stitch ? o.stitchColor : 'transparent'; }
-  if (p.kind === 'headset') o.accent = o.plates || o.frame;
-  if (p.kind === 'stand') { o.color = (ch('wood') || {}).color || '#5a3e2b'; o.base = 'steel'; }
-  if (p.kind === 'cable') { o.aviator = true; o.length = o.length || '1.8 m'; }
-  if (p.kind === 'case') { const mm = (ch('size') || {}).mm; if (mm) o._w = Math.round(360 * mm[0] / 490); }
+  // Fallback illustration, shown when a maker photo can't load: map the chosen variant onto the generic drawing
+  const vc = variantOf(p, o);
+  if (p.kind === 'mouse' || p.kind === 'mouse-ergo') { o.shell = o.buttons = o.side = vc.hex; o.finish = 'Matte'; }
+  if (p.kind === 'mat') { const sz = p.felt ? choiceOf(p, 'size', o.size) : vc; o._dims = sz && sz.mm; o.print = 'solid'; o.color = p.felt ? vc.hex : '#0e0e0f'; o._stitch = 'transparent'; o.mono = ''; }
+  if (p.kind === 'headset') { o.frame = o.accent = o.plates = vc.hex; o.cushion = 'Leatherette'; o.mic = false; }
+  if (p.kind === 'stand') { o.color = vc.hex; o.base = 'steel'; }
+  if (p.kind === 'cable') { o.sleeve = vc.hex; o.metal = '#bfc1c3'; o.aviator = true; o.length = '1.8 m'; }
+  if (p.kind === 'case') { o.color = o.pull = '#2e2f31'; o.mono = ''; if (vc.mm) o._w = Math.round(360 * vc.mm[0] / 490); }
   const T = (x, y, txt, fill, size = 15) => txt ? `<text x="${x}" y="${y}" text-anchor="middle" font-family="Public Sans, system-ui, sans-serif" font-weight="700" font-size="${size}" fill="${fill}" opacity=".8">${escA(txt)}</text>` : '';
   const shadow = (cx, cy, rx) => `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${rx * 0.1}" fill="#000" opacity=".13"/>`;
   const shine = `<linearGradient id="${id}s" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="${o.finish === 'Gloss' ? 0.5 : 0.2}"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".2"/></linearGradient>`;
@@ -59,7 +59,7 @@ export function artSVG(p, cfg, printSrc = null) {
       <rect x="${x + 5}" y="${y + 5}" width="${w - 10}" height="${h - 10}" rx="8" fill="none" stroke="${o._stitch || o.stitch}" stroke-width="2.2" stroke-dasharray="5 4"/>
       ${T(200, y + h + 30, `${dm[0]} × ${dm[1]} mm`, '#535e7d', 13)}`;
   } else if (p.kind === 'headset') {
-    const cush = (p.options.find(x => x.id === 'cushion').choices.find(c => c.v === o.cushion) || {}).color || '#8a8f99';
+    const cush = shade(o.frame, -0.35);
     body = `<defs>${shine}</defs>${shadow(200, 276, 120)}
       <path d="M112 176 C108 62 292 62 288 176" fill="none" stroke="${o.frame}" stroke-width="20" stroke-linecap="round"/>
       <path d="M132 150 C138 92 262 92 268 150" fill="none" stroke="${cush}" stroke-width="11" stroke-linecap="round"/>
