@@ -422,3 +422,5 @@ a.btn.primary{color:var(--accent-ink)}
 .card-vars .dot[aria-pressed="true"]{box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px var(--accent)}
 .card-vars .dot-label{font-size:.8rem;color:var(--muted);margin-left:2px}
 .cat .art .ph{border-radius:10px}
+.pd-media:has(#pdStage .ph.failed) .pd-thumbs{display:none}
+.pd-stage .ph.failed::after{content:"Drawing shown: the product photo couldn't load here";position:absolute;left:12px;bottom:12px;font-size:.75rem;font-weight:600;color:var(--muted);background:color-mix(in srgb,var(--surface) 85%,transparent);border:1px solid var(--line);border-radius:999px;padding:4px 10px}

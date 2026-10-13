@@ -14,6 +14,17 @@ npm run preview   # serve the built site
 
 Requires Node 18.20+ (tested with Node 22).
 
+## Product photos
+
+Product pages and cards use the makers' own photos. By default they load from the makers' sites. To serve your own copies (faster, and needed wherever outside images are blocked):
+
+```sh
+npm run photos    # downloads every photo into public/photos/ and writes public/photos/manifest.json
+npm run build
+```
+
+The site switches to the local copies automatically; anything that didn't download keeps loading from the maker. If a photo can't load at all, a drawing is shown in its place.
+
 ## Pages
 
 | Route | What it does |

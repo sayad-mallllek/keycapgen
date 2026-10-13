@@ -1,5 +1,6 @@
 // Maker product photos for each keyboard edition (model id -> edition slug -> photos).
 // Copied from the makers' product pages. Keycap Studio 75 is our own design, so it has no photo.
+import { local } from '../lib/photoSrc.js';
 const lg = u => u.replace('d_transparent.gif/', '').replace('w_544,h_466,', 'w_960,h_823,');
 const cf = u => u.replace('w=1920', 'w=1400');
 const KC = 'https://cdn.shopify.com/s/files/1/0059/0630/1017/files/';
@@ -39,4 +40,5 @@ export const KB_PHOTOS = {
     white: ['KD5SBneigdw4-FMm09FBoXTsjRg=/1500x1000/https%3A%2F%2Fmedias-p1.phoenix.razer.com%2Fsys-master-phoenix-images-container%2Fh5d%2Fhe3%2F9774773534750%2F240509-huntsman-v3-pro-tkl-white-1500x1000-1.jpg', 'zoLZW_-nODP9A_0Gqfg4aHUNOVQ=/1500x1000/https%3A%2F%2Fmedias-p1.phoenix.razer.com%2Fsys-master-phoenix-images-container%2Fh89%2Fha8%2F9814446899230%2F240909-huntsman-v3-pro-tkl-white-1500x1000-2.jpg'].map(u => RZ + u),
   },
 };
+Object.values(KB_PHOTOS).forEach(eds => Object.keys(eds).forEach(k => { eds[k] = eds[k].map(local); }));
 export const kbPhotos = (mid, slug) => (KB_PHOTOS[mid] || {})[slug] || null;

@@ -2,6 +2,8 @@
 // Each product has one "variant" option (color, wood, sleeve or size) whose choices carry the photo gallery,
 // plus a few add-ons we offer on top. Prices are example prices for this prototype store.
 
+import { local } from '../lib/photoSrc.js';
+
 export const CATS = [
   { id: 'keyboards', name: 'Keyboards', blurb: '9 layouts, every key yours' },
   { id: 'mice', name: 'Mice', blurb: 'Official colorways, grip tape, engraving' },
@@ -199,6 +201,8 @@ export const PRODUCTS = [
     ],
   },
 ];
+// Self-hosted copies replace the maker URLs once downloaded
+PRODUCTS.forEach(p => p.options.forEach(o => (o.choices || []).forEach(c => { if (c.images) c.images = c.images.map(local); })));
 export const PRODUCT_BY_ID = Object.fromEntries(PRODUCTS.map(p => [p.id, p]));
 export const defaultsOf = p => Object.fromEntries(p.options.map(o => [o.id, o.def]));
 export const choiceOf = (p, id, v) => { const o = p.options.find(x => x.id === id); return o && o.choices ? o.choices.find(c => c.v === v) : null; };
