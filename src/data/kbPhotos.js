@@ -1,6 +1,7 @@
 // Maker product photos for each keyboard edition (model id -> edition slug -> photos).
-// Copied from the makers' product pages. Keycap Studio 75 is our own design, so it has no photo.
+// Copied from the makers' product pages. keycapgen 75 is our own design, so it has no photo.
 import { local } from '../lib/photoSrc.js';
+import { MODELS, COLORWAYS } from './keyboards.js';
 const lg = u => u.replace('d_transparent.gif/', '').replace('w_544,h_466,', 'w_960,h_823,');
 const cf = u => u.replace('w=1920', 'w=1400');
 const KC = 'https://cdn.shopify.com/s/files/1/0059/0630/1017/files/';
@@ -42,3 +43,6 @@ export const KB_PHOTOS = {
 };
 Object.values(KB_PHOTOS).forEach(eds => Object.keys(eds).forEach(k => { eds[k] = eds[k].map(local); }));
 export const kbPhotos = (mid, slug) => (KB_PHOTOS[mid] || {})[slug] || null;
+// A model's stock editions with their colorway and maker photos (our own design has none and keeps its drawing)
+export const editionsOf = mid => MODELS[mid].editionIds
+  .map(id => ({ id, cw: COLORWAYS[id], photos: kbPhotos(mid, id.includes(':') ? id.split(':')[1] : id) }));

@@ -60,7 +60,7 @@ const KEYCHRON_EDITIONS = [
 ];
 const MODELS = {
   studio75: {
-    price: 149, name: 'Keycap Studio 75', maker: 'Original design', layout: '75%', profile: 'studio',
+    price: 149, name: 'keycapgen 75', maker: 'Original design', layout: '75%', profile: 'studio',
     switches: 'Generic MX-style switches', keycaps: 'Sculpted OEM-style caps', caseDesc: 'Rounded tray with a raised rim', extrasDesc: 'None',
     signature: 'The original workbench board: a 75% with a gapped function row and a rim all around.',
     case: { m: .55, top: 0, depth: .5, radius: .42, rim: .36 },

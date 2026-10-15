@@ -10,7 +10,7 @@ const colored = vo.choices.every(c => c.hex);
 const addons = p.options.filter(o => o.type === 'toggle' || o.type === 'text').length;
 const media = photoHTML(vc.images[0], `${p.brand} ${p.name}, ${vc.v}`, artSVG(p));
 ---
-<article class="card" data-cat={p.cat} data-price={p.price} data-order={order} data-pid={p.id}>
+<article class="card" data-cat={p.cat} data-price={p.price} data-order={order} data-pid={p.id} data-reveal>
   <a class="card-media" href={`/products/${p.id}`} aria-label={p.name} transition:name={`prod-${p.id}`} set:html={media} />
   <div class="card-body">
     <div class="card-cat">{cat} · {p.brand}</div>

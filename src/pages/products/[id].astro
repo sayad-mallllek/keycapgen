@@ -20,7 +20,7 @@ const main = photoHTML(vc.images[0], `${p.brand} ${p.name}, ${vc.v}`, artSVG(p),
         <div class="pd-media">
           <div class="pd-stage" id="pdStage" transition:name={`prod-${p.id}`} set:html={main} />
           <div class="pd-thumbs" id="pdThumbs" role="group" aria-label="Photos"></div>
-          <p class="note">Product photos from <a href={p.source} target="_blank" rel="noopener">{p.brand}</a>. Keycap Studio adds the options below and is not affiliated with {p.brand}.</p>
+          <p class="note">Product photos from <a href={p.source} target="_blank" rel="noopener">{p.brand}</a>. keycapgen adds the options below and is not affiliated with {p.brand}.</p>
         </div>
         <div class="pd-info">
           <div class="card-cat">{cat} · {p.brand}</div>
@@ -31,11 +31,11 @@ const main = photoHTML(vc.images[0], `${p.brand} ${p.name}, ${vc.v}`, artSVG(p),
           <div id="pdOpts"></div>
           <div class="buy-row">
             <div class="qty" aria-label="Quantity"><button type="button" data-q="-1" aria-label="Decrease quantity">−</button><span id="pdQty">1</span><button type="button" data-q="1" aria-label="Increase quantity">+</button></div>
-            <button type="button" class="btn primary lg" id="pdAdd">Add to cart</button>
+            <button type="button" class="btn primary xl" id="pdAdd">Add to cart</button>
           </div>
           <dl class="specs">
             {p.specs.map(([a, b]) => <><dt>{a}</dt><dd>{b}</dd></>)}
-            {p.options.some(o => o.type === 'toggle' || o.type === 'text') && <><dt>Add-ons</dt><dd>Applied by Keycap Studio before shipping</dd></>}
+            {p.options.some(o => o.type === 'toggle' || o.type === 'text') && <><dt>Add-ons</dt><dd>Applied by keycapgen before shipping</dd></>}
           </dl>
         </div>
       </div>

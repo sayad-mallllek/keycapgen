@@ -1,4 +1,4 @@
-// Keycap Studio 3D engine: the keyboard scene, the customizer UI and all key editing.
+// keycapgen 3D engine: the keyboard scene, the customizer UI and all key editing.
 // It builds its own UI once and keeps it in memory, so it survives Astro page swaps:
 // pages only provide a mount point (data-studio="hero" or data-studio="customize")
 // and the engine moves its canvas and panels there on each navigation.
@@ -532,7 +532,7 @@ const niceName = k => (k.label && k.label.trim()) ? k.label : (k.id === 'Space' 
 const STORE = 'keycap-studio-v1';
 let route = 'none';
 function snapObj() {
-  return { app: 'keycap-studio', v: 4, model: state.model, colorway: state.colorway, case: state.case, deck: state.deck,
+  return { app: 'keycapgen', v: 4, model: state.model, colorway: state.colorway, case: state.case, deck: state.deck,
     keys: Object.fromEntries(keys.map(k => [k.id, { ...Object.fromEntries(FIELDS.map(f => [f, k[f]])), paint: k.paintData || null, skin: k.skin || null, hideLegend: !!k.hideLegend }])) };
 }
 function snapshot() { return JSON.stringify(snapObj()); }
@@ -544,7 +544,7 @@ function snapshotWithImages() {
 const HEX = /^#[0-9a-f]{6}$/i;
 function restore(json) {
   const d = typeof json === 'string' ? JSON.parse(json) : json;
-  if (!d || typeof d.keys !== 'object') throw new Error('That JSON is not a Keycap Studio design.');
+  if (!d || typeof d.keys !== 'object') throw new Error('That JSON is not a keycapgen design.');
   if (d.images && typeof d.images === 'object') Object.entries(d.images).forEach(([id, src]) => { if (typeof src === 'string' && src.startsWith('data:image/') && !id.startsWith('sample:')) images[id] = src; });
   const mid = MODELS[d.model] ? d.model : 'studio75';
   if (mid !== state.model || !keys.length) { buildModel(mid); userMoved = false; tweenTo('home', 700); }

@@ -7,6 +7,7 @@ import { PRODUCT_BY_ID, defaultsOf, priceOf, summaryOf, variantOf, photosOf } fr
 import { artSVG, boardSVG } from '../lib/svg.js';
 import { photoHTML, markBrokenPhotos } from '../lib/photo.js';
 import { MODELS } from '../data/keyboards.js';
+import { editionsOf } from '../data/kbPhotos.js';
 import { money, uid, escA } from '../lib/util.js';
 
 const $ = s => document.querySelector(s);
@@ -18,38 +19,89 @@ const loadStudio = () => studioP || (studioP = import('../engine/studio.js').the
 
 // Mount the engine synchronously right after the DOM swap, so the view transition's
 // "new" snapshot already shows the 3D canvas in place (keyboard photo -> customizer morph).
-document.addEventListener('astro:after-swap', () => { if (studio) studio.attach(); });
+document.addEventListener('astro:after-swap', () => { if (studio) studio.attach(); setMenu(false); });
 
 document.addEventListener('astro:page-load', async () => {
-  refreshBadge(); markNav();
+  refreshBadge(); markNav(); labelTheme();
   const page = document.body.dataset.page;
   if (page === 'shop') initShop();
   if (page === 'keyboards') initKeyboards();
   if (page === 'product') initProduct();
+  if (page === 'keyboard') initBoard();
   if (page === 'cart') renderCart();
   if (page === 'checkout') initCheckout();
   if (page === 'done') renderDone();
-  markBrokenPhotos();
+  markBrokenPhotos(); initReveal();
   if (document.querySelector('[data-studio]')) { await loadStudio(); studio.attach(); }
   else if (studio) studio.detach();
 });
 
 function markNav() {
   const page = document.body.dataset.page;
-  const key = page === 'product' ? 'shop' : page === 'checkout' || page === 'done' ? 'cart' : page;
+  const key = page === 'product' ? 'shop' : page === 'keyboard' ? 'keyboards' : page === 'checkout' || page === 'done' ? 'cart' : page;
   $$('[data-nav]').forEach(a => { if (a.dataset.nav === key) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   // The nav persists across swaps; refresh its links so relative URLs stay right in the flat preview build
   $$('.nav [data-nav]').forEach(a => { a.setAttribute('href', pageUrl(a.dataset.nav)); });
   const brand = $('.nav .brand'); if (brand) brand.setAttribute('href', pageUrl('home'));
 }
 
+/* ---------- Mobile menu ---------- */
+// The header persists across page swaps, so the menu is closed explicitly after each navigation.
+function setMenu(open) {
+  const nav = $('.nav'), btn = $('.nav-toggle'); if (!nav || !btn) return;
+  nav.classList.toggle('open', open); btn.setAttribute('aria-expanded', String(open));
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') setMenu(false); });
+
+/* ---------- Theme toggle ---------- */
+// Flips between light and dark. Picking the theme the system already uses clears the stored choice,
+// so the site goes back to following the system.
+const systemDark = matchMedia('(prefers-color-scheme: dark)');
+const isDark = () => { const t = document.documentElement.dataset.theme; return t ? t === 'dark' : systemDark.matches; };
+function labelTheme() { const b = $('.theme-btn'); if (b) b.setAttribute('aria-label', isDark() ? 'Switch to light mode' : 'Switch to dark mode'); }
+function toggleTheme() {
+  const next = isDark() ? 'light' : 'dark', root = document.documentElement;
+  const flip = () => {
+    if ((next === 'dark') === systemDark.matches) { root.removeAttribute('data-theme'); try { localStorage.removeItem('kg-theme'); } catch (e) {} }
+    else { root.setAttribute('data-theme', next); try { localStorage.setItem('kg-theme', next); } catch (e) {} }
+    labelTheme();
+  };
+  // Cross-fade the whole page where view transitions are available
+  if (document.startViewTransition && !reduceMotion) document.startViewTransition(flip); else flip();
+}
+systemDark.addEventListener('change', labelTheme);
+
+/* ---------- Reveal ---------- */
+// Blocks marked [data-reveal] fade up as they scroll in. Blocks arriving together are staggered by
+// the attribute's value in ms (200 by default), capped so long grids don't wait for seconds.
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const revealer = !reduceMotion && 'IntersectionObserver' in window ? new IntersectionObserver(entries => {
+  let n = 0;
+  entries.forEach(en => {
+    if (!en.isIntersecting) return;
+    const el = en.target;
+    el.style.transitionDelay = Math.min(n++, 4) * (+el.dataset.reveal || 200) + 'ms';
+    el.classList.add('in'); revealer.unobserve(el);
+    // Drop the delay once revealed so hover effects respond immediately
+    el.addEventListener('transitionend', () => { el.style.transitionDelay = ''; }, { once: true });
+  });
+}, { rootMargin: '0px 0px -6% 0px' }) : null;
+function initReveal() {
+  if (!revealer) return;
+  $$('[data-reveal]:not(.pending)').forEach(el => { el.classList.add('pending'); revealer.observe(el); });
+}
+
 /* ---------- Delegated clicks ---------- */
 document.addEventListener('click', async e => {
-  // "Customize" on any keyboard card: load that board, morph the card art into the customizer stage
+  if (e.target.closest('.theme-btn')) { toggleTheme(); return; }
+  const tog = e.target.closest('.nav-toggle');
+  if (tog) { setMenu(!$('.nav').classList.contains('open')); return; }
+  if (!e.target.closest('.nav')) setMenu(false);
+  // "Customize in 3D" on the home hero or a keyboard page: load that board, morph its photo into the customizer stage
   const m = e.target.closest('[data-model]');
   if (m) {
     e.preventDefault();
-    const card = m.closest('.card'), media = card ? card.querySelector('.card-media') : m.closest('.hero-stage');
+    const card = m.closest('.card'), media = card ? card.querySelector('.card-media') : m.closest('.pd') ? $('#pdStage') : m.closest('.hero-stage');
     $$('.hero-stage').forEach(h => { h.style.viewTransitionName = 'none'; });
     if (media) media.style.viewTransitionName = 'studio-stage';
     const edition = m.dataset.edition || (card && card.dataset.edition);
@@ -68,6 +120,7 @@ document.addEventListener('click', async e => {
       card.dataset.edition = dot.dataset.kbed;
       const M = MODELS[card.dataset.mid];
       media.innerHTML = photoHTML(dot.dataset.src, `${M.name} in ${dot.dataset.label}`, boardSVG(card.dataset.mid, dot.dataset.kbed));
+      try { sessionStorage.setItem('ks-kbed:' + card.dataset.mid, dot.dataset.kbed); } catch (err) {}
     } else {
       const p = PRODUCT_BY_ID[card.dataset.pid];
       media.innerHTML = photoHTML(dot.dataset.src, `${p.brand} ${p.name}, ${dot.dataset.label}`, artSVG(p, { [p.gallery]: dot.dataset.pvar }));
@@ -165,6 +218,29 @@ function updatePreview() {
   $('#pdPrice').textContent = money(priceOf(pd.p, pd.cfg));
 }
 
+/* ---------- Keyboard page ---------- */
+// Photo gallery per stock edition. The chosen edition rides along on "Customize in 3D" (data-edition).
+let kd = null;
+function initBoard() {
+  const host = $('[data-board]'); if (!host) return;
+  const mid = host.dataset.board, eds = editionsOf(mid);
+  let ed = null;
+  try { ed = sessionStorage.getItem('ks-kbed:' + mid); sessionStorage.removeItem('ks-kbed:' + mid); } catch (e) {}
+  kd = { mid, eds, ed: eds.find(e => e.id === ed) || eds[0], shot: 0 };
+  $$('[data-kbsw]').forEach(b => b.addEventListener('click', () => { kd.ed = kd.eds.find(e => e.id === b.dataset.kbsw); kd.shot = 0; renderBoard(); }));
+  $('#pdThumbs').addEventListener('click', e => { const b = e.target.closest('[data-shot]'); if (b) { kd.shot = +b.dataset.shot; renderBoard(); } });
+  renderBoard();
+}
+function renderBoard() {
+  const { mid, ed } = kd, M = MODELS[mid], shots = ed.photos || [], i = Math.min(kd.shot, Math.max(0, shots.length - 1));
+  $$('[data-kbsw]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.kbsw === ed.id)));
+  const name = $('#kbEdName'); if (name) name.textContent = ed.cw.name;
+  $('#kbCustomize').dataset.edition = ed.id;
+  const alt = `${M.name} in ${ed.cw.name}` + (shots.length > 1 ? `, photo ${i + 1} of ${shots.length}` : '');
+  $('#pdStage').innerHTML = photoHTML(shots[i], alt, boardSVG(mid, ed.id), true);
+  $('#pdThumbs').innerHTML = shots.length > 1 ? shots.map((u, k) => `<button type="button" class="pd-thumb" data-shot="${k}" aria-pressed="${k === i}" aria-label="Photo ${k + 1}">${photoHTML(u, '', '')}</button>`).join('') : '';
+}
+
 /* ---------- Cart ---------- */
 const thumbOf = i => { if (i.type === 'board') return i.thumb ? `<img src="${i.thumb}" alt="">` : boardSVG(i.model);
   const p = PRODUCT_BY_ID[i.pid]; if (!p) return '';
@@ -224,10 +300,12 @@ function placeOrder(e) {
   e.preventDefault();
   const req = [['coEmail', 'your email'], ['coName', 'your full name'], ['coAddr', 'a street address'], ['coCity', 'a city']];
   const miss = req.filter(([id]) => !$('#' + id).value.trim()), email = $('#coEmail').value.trim(), err = $('#coErr');
-  if (miss.length) { err.textContent = `Please add ${miss.map(m => m[1]).join(', ')}.`; err.hidden = false; $('#' + miss[0][0]).focus(); return; }
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { err.textContent = 'That email address looks incomplete. Check it and try again.'; err.hidden = false; $('#coEmail').focus(); return; }
+  // Invalid fields switch to the red error border until they're edited
+  const flag = ids => ids.forEach(id => { const f = $('#' + id); f.setAttribute('aria-invalid', 'true'); f.addEventListener('input', () => f.removeAttribute('aria-invalid'), { once: true }); });
+  if (miss.length) { flag(miss.map(m => m[0])); err.textContent = `Please add ${miss.map(m => m[1]).join(', ')}.`; err.hidden = false; $('#' + miss[0][0]).focus(); return; }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { flag(['coEmail']); err.textContent = 'That email address looks incomplete. Check it and try again.'; err.hidden = false; $('#coEmail').focus(); return; }
   err.hidden = true;
-  const order = { num: 'KS-' + Math.floor(100000 + Math.random() * 900000), count: cart.reduce((a, i) => a + i.qty, 0), total: cartTotal() + shippingFor(cartTotal(), express()), email };
+  const order = { num: 'KG-' + Math.floor(100000 + Math.random() * 900000), count: cart.reduce((a, i) => a + i.qty, 0), total: cartTotal() + shippingFor(cartTotal(), express()), email };
   try { sessionStorage.setItem('ks-order', JSON.stringify(order)); } catch (er) {}
   clearCart(); navigate(pageUrl('order-placed'));
 }

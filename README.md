@@ -1,4 +1,4 @@
-# Keycap Studio
+# keycapgen
 
 A storefront for custom keyboards and desk accessories, built with [Astro](https://astro.build) and three.js.
 Shoppers design every key of a keyboard in 3D, configure matching accessories, and check out (prototype checkout: no payments).
@@ -32,6 +32,7 @@ The site switches to the local copies automatically; anything that didn't downlo
 | `/` | Home: featured board, categories, featured keyboards, keycap sets |
 | `/shop` | All products with category filters and price sorting |
 | `/keyboards` | The nine keyboard models with maker photos per colorway, filterable by layout |
+| `/keyboards/[id]` | One page per keyboard model: photo gallery per stock colorway, specs, and a "Customize in 3D" button that opens it in the customizer |
 | `/products/[id]` | One page per accessory (built from `src/data/products.js`): photo gallery per colorway, add-ons, price |
 | `/customize` | The full 3D keyboard customizer (the only 3D page), with live price and add to cart |
 | `/cart`, `/checkout`, `/order-placed` | Cart (kept in localStorage), prototype checkout and confirmation |
@@ -41,8 +42,8 @@ The site switches to the local copies automatically; anything that didn't downlo
 `src/layouts/Base.astro` adds Astro's `<ClientRouter />`, so every link navigates with the browser's View Transitions API instead of a full reload:
 
 - **Page content** slides up and fades in (a custom `transition:animate` on `<main>`); going back reverses the direction.
-- **The 3D stage** morphs in: the home hero photo or a keyboard card photo grows into the customizer viewport (`view-transition-name: studio-stage`).
-- **Product cards** morph into the product page: card art → large preview (`prod-<id>`), card title → page heading (`prod-title-<id>`).
+- **The 3D stage** morphs in: the home hero photo or a keyboard page photo grows into the customizer viewport (`view-transition-name: studio-stage`).
+- **Product cards** morph into the product page: card art → large preview (`prod-<id>`), card title → page heading (`prod-title-<id>`). Keyboard cards do the same into the keyboard page (`kb-<id>`, `kb-title-<id>`).
 - **The nav** is `transition:persist`, so it stays put and keeps the cart badge.
 - `prefers-reduced-motion` turns the animations off.
 
@@ -67,9 +68,9 @@ src/
   engine/studio-ui.html  the customizer's markup
   scripts/site.js     page setup on every navigation (shop filters, product options, cart, checkout)
   layouts/Base.astro  head, nav, footer, ClientRouter
-  components/         ProductCard, BoardCard
+  components/         ProductCard, BoardCard, CtaBanner
   pages/              routes listed above
-  styles/global.css   design tokens (Public Sans, royal blue), light/dark themes, view-transition animations
+  styles/global.css   design tokens (ByteTactix system: Poppins, sky blue), light/dark themes, view-transition animations
 ```
 
 ## Notes
@@ -77,5 +78,5 @@ src/
 - Prices, products and delivery options are placeholders.
 - Checkout is a prototype: it validates the form and shows a confirmation; no payment is taken and nothing is sent anywhere.
 - Product photos are loaded from the makers' own sites (Logitech, Razer, SteelSeries, Keychron, Grovemade, Wooting, PFU, NuPhy). They belong to those companies: a live store needs their permission or reseller assets, ideally self-hosted. If a photo can't load, the page shows a drawing instead.
-- Keyboard models are simplified illustrations; Keycap Studio is not affiliated with the brands shown. Keycap set colors approximate well-known GMK, SA and ePBT sets.
+- Keyboard models are simplified illustrations; keycapgen is not affiliated with the brands shown. Keycap set colors approximate well-known GMK, SA and ePBT sets.
 - The cart and the current design are stored in the visitor's browser (localStorage).

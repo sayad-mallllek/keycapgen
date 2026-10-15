@@ -2,3 +2,6 @@ node_modules
 dist
 .astro
 preview
+
+# Netlify local link
+.netlify

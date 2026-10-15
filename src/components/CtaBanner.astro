@@ -1,0 +1,15 @@
+---
+// The high-contrast moment of a page: blue banner with the contour pattern and the single yellow button.
+const { title = 'Have a dream board in mind?', sub = "Design it key by key in 3D, and we'll build it exactly as you drew it.", label = "Let's Design!", href = '/customize' } = Astro.props;
+---
+<section class="band">
+  <div class="wrap">
+    <div class="cta-banner" data-reveal>
+      <div class="cta-row">
+        <h2>{title}</h2>
+        <a class="btn-accent" href={href}>{label}</a>
+      </div>
+      <p>{sub}</p>
+    </div>
+  </div>
+</section>

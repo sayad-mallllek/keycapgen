@@ -1,0 +1,55 @@
+---
+import Base from '../../layouts/Base.astro';
+import { boardSVG } from '../../lib/svg.js';
+import { photoHTML } from '../../lib/photo.js';
+import { MODELS, PROFILES } from '../../data/keyboards.js';
+import { editionsOf } from '../../data/kbPhotos.js';
+import { money } from '../../lib/util.js';
+export function getStaticPaths() {
+  return Object.keys(MODELS).map(mid => ({ params: { id: mid } }));
+}
+const { id: mid } = Astro.params;
+const M = MODELS[mid];
+const eds = editionsOf(mid), first = eds[0];
+const main = photoHTML(first.photos && first.photos[0], `${M.name} in ${first.cw.name}`, boardSVG(mid, first.id), true);
+---
+<Base title={M.name} description={M.signature} page="keyboard">
+  <section class="page">
+    <div class="wrap">
+      <a class="back" href="/keyboards">← All keyboards</a>
+      <div class="pd" data-board={mid}>
+        <div class="pd-media">
+          <div class="pd-stage" id="pdStage" transition:name={`kb-${mid}`} set:html={main} />
+          <div class="pd-thumbs" id="pdThumbs" role="group" aria-label="Photos"></div>
+          {eds.some(e => e.photos) && <p class="note">Product photos from the maker. The 3D customizer uses a simplified model, and keycapgen is not affiliated with {M.maker.split(' · ')[0]}.</p>}
+        </div>
+        <div class="pd-info">
+          <div class="card-cat">Keyboards · {M.maker}</div>
+          <h1 transition:name={`kb-title-${mid}`}>{M.name}</h1>
+          <p class="lede">{M.signature}</p>
+          <div class="pd-price">{money(M.price)}</div>
+          {eds.length > 1 && (
+            <div class="opt">
+              <div class="opt-h">Colorway<span id="kbEdName">{first.cw.name}</span></div>
+              <div class="swatch-row">
+                {eds.map((e, i) => <button type="button" class="sw" data-kbsw={e.id} style={`background:${e.cw.case}`} aria-pressed={i === 0 ? 'true' : 'false'} aria-label={`Colorway: ${e.cw.name}`} title={e.cw.name}></button>)}
+              </div>
+            </div>
+          )}
+          <div class="buy-row">
+            <a class="btn primary xl" id="kbCustomize" href="/customize" data-model={mid} data-edition={first.id}>Customize in 3D</a>
+          </div>
+          <p class="note">Open the board in the 3D customizer to change any key, then add it to your cart. Custom keycaps, art and legends are priced there.</p>
+          <dl class="specs">
+            <dt>Layout</dt><dd>{M.layout}</dd>
+            <dt>Switches</dt><dd>{M.switches}</dd>
+            <dt>Keycaps</dt><dd>{M.keycaps}</dd>
+            <dt>Profile</dt><dd>{PROFILES[M.profile].name}</dd>
+            <dt>Case</dt><dd>{M.caseDesc}</dd>
+            <dt>On top</dt><dd>{M.extrasDesc}</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>
