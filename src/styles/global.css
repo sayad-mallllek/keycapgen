@@ -7,7 +7,7 @@
   --brand-blue:#60A5FA; --brand-blue-hover:#3B82F6; --brand-blue-deep:#2563EB; --brand-indigo:#312E81;
   --theme-blue:#152C5B; --theme-purple:#6610F2; --dark-theme-purple:#520DC2; --light-theme-purple:#E3D3FD;
   --accent-yellow:#FCD34D; --gray-400:#9CA3AF; --gray-50:#F9FAFB; --gray-100:#F3F4F6; --gray-200:#E5E7EB; --gray-300:#D1D5DB;
-  --error:#EF4444; --loader-bit:#82BAFE;
+  --error:#EF4444;
 
   /* Semantic tokens: everything below is what the themes swap (the 3D engine reads --accent and --is-dark) */
   --bg:#ffffff; --surface:#ffffff; --surface-2:var(--gray-50); --surface-alt:var(--gray-50);
@@ -260,6 +260,19 @@ input[type=range]{width:100%;accent-color:var(--accent)}
   .panel{overflow:visible;padding-inline:0}
   .hud-tl{right:12px;top:52px}
 }
+/* Mini preview: on mobile the live canvas moves here while the viewer is scrolled out of view */
+.pip{position:fixed;left:0;top:0;z-index:40;width:min(46vw,200px);aspect-ratio:4/3;border-radius:var(--r-card-sm);overflow:hidden;
+  border:1px solid var(--card-line);box-shadow:var(--shadow-2xl);background:radial-gradient(120% 90% at 50% 30%,var(--stage-a),var(--stage-b));
+  cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;animation:pip-in .25s cubic-bezier(.2,.75,.15,1)}
+.pip[hidden]{display:none}
+.pip.dragging{cursor:grabbing}
+.pip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pip-stage{position:absolute;inset:0}
+.pip-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+.pip-close{position:absolute;top:4px;right:4px;width:28px;height:28px;border-radius:50%;border:1px solid var(--card-line);cursor:pointer;
+  background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:blur(6px);color:var(--fg);font-size:1.1rem;line-height:1;padding:0}
+@keyframes pip-in{from{opacity:0;scale:.85}to{opacity:1;scale:1}}
+@media (prefers-reduced-motion: reduce){ .pip{animation:none} }
 @media (max-width: 480px){
   .spec{display:none}
   .colorways{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -576,24 +589,6 @@ body[data-page="404"] .foot{display:none}
   .cat:hover,.step:hover,.card:hover,.set:hover,.btn-accent:hover{scale:none}
   .btn .nudge{animation:none}
 }
-
-/* ---------- Intro loader: first visit per session (Base.astro builds it) ---------- */
-html.intro-lock,html.intro-lock body{overflow:hidden}
-.intro{position:fixed;inset:0;z-index:100;background:var(--bg);display:grid;place-items:center;transition:opacity .5s;cursor:pointer}
-.intro.out{opacity:0;pointer-events:none}
-.intro-grid{grid-area:1/1;display:grid;grid-template-columns:repeat(7,48px);grid-auto-rows:48px;transition:opacity .5s}
-.intro-grid span{display:grid;place-items:center;font:500 1.5rem/1 var(--font-body);color:var(--theme-blue);transition:color .3s}
-.intro-grid.unlock span{color:var(--loader-bit)}
-.intro-grid.gone{opacity:0}
-.intro-word{grid-area:1/1;position:relative;overflow:hidden;font-size:2.25rem;opacity:0;transform:scale(.92);transition:opacity .6s,transform .6s;padding:.1em .2em}
-.intro-word.show{opacity:1;transform:none}
-.intro-word::after{content:"";position:absolute;top:0;bottom:0;left:-40%;width:30%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.9),transparent);transform:skewX(-20deg);opacity:0}
-.intro-word.shine::after{opacity:1;animation:intro-shine 2.2s ease-in-out forwards}
-@keyframes intro-shine{to{left:120%}}
-.intro-skip{position:absolute;bottom:calc(24px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);font-size:.85rem;font-weight:300;color:var(--muted)}
-@media (min-width: 640px){ .intro-grid{grid-template-columns:repeat(7,56px);grid-auto-rows:56px} .intro-word{font-size:3rem} }
-@media (min-width: 768px){ .intro-word{font-size:3.875rem} }
-@media (min-width: 1024px){ .intro-grid{grid-template-columns:repeat(7,72px);grid-auto-rows:72px} .intro-grid span{font-size:2rem} .intro-word{font-size:4rem} }
 
 /* ---------- View transitions ---------- */
 /* The 3D stage keeps one name on every page, so the hero, a keyboard card and the customizer viewport morph into each other */

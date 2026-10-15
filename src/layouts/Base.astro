@@ -48,31 +48,6 @@ const pageAnim = {
     <ClientRouter />
   </head>
   <body data-page={page}>
-    <script is:inline>
-      // Intro loader, first visit per session: binary digits shuffle, "unlock" to light blue, the wordmark appears
-      // with a shimmer, then the overlay fades out. Click or press any key to skip. Skipped for reduced motion.
-      (() => {
-        try { if (sessionStorage.getItem('ks-intro')) return; sessionStorage.setItem('ks-intro', '1'); } catch (e) { return; }
-        if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-        const root = document.documentElement, el = document.createElement('div');
-        el.className = 'intro'; el.setAttribute('aria-hidden', 'true');
-        el.innerHTML = '<div class="intro-grid">' + '<span></span>'.repeat(49) + '</div><div class="intro-word wordmark">keycapgen</div><div class="intro-skip">Click to skip</div>';
-        document.body.appendChild(el); root.classList.add('intro-lock');
-        const cells = [...el.querySelectorAll('.intro-grid span')], grid = el.firstChild, word = el.children[1], timers = [];
-        const roll = () => cells.forEach(c => { c.textContent = Math.random() < 0.5 ? '0' : '1'; });
-        roll(); const iv = setInterval(roll, 100);
-        const at = (ms, fn) => timers.push(setTimeout(fn, ms));
-        at(2400, () => { clearInterval(iv); cells.forEach((c, i) => { c.style.transitionDelay = i * 50 + 'ms'; }); grid.classList.add('unlock'); });
-        at(2400 + 49 * 50 + 300, () => { grid.classList.add('gone'); word.classList.add('show'); });
-        at(6000, () => word.classList.add('shine'));
-        const end = () => {
-          timers.forEach(clearTimeout); clearInterval(iv); el.classList.add('out');
-          setTimeout(() => { el.remove(); root.classList.remove('intro-lock'); }, 500);
-          removeEventListener('keydown', end);
-        };
-        at(8500, end); el.addEventListener('click', end); addEventListener('keydown', end);
-      })();
-    </script>
     <header class="nav" transition:persist="site-nav" transition:name="site-nav">
       <div class="nav-in">
         <a href="/" class="brand wordmark" aria-label="keycapgen home">keycapgen</a>

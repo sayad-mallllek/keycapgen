@@ -1479,27 +1479,94 @@ $('#czAdd').addEventListener('click', () => {
 
 /* ---------------- Mounting into Astro pages ---------------- */
 let observed = null;
+function mountCanvas(host) {
+  const el = renderer.domElement;
+  if (el.parentElement !== host) host.prepend(el);
+  if (observed !== host) { if (observed) resizeObs.unobserve(observed); observed = host; resizeObs.observe(host); }
+}
+
+/* ---------------- Mobile mini preview ---------------- */
+// On narrow screens, once the viewer is scrolled up out of sight, the live canvas moves into a small
+// floating card so edits further down stay visible. Drag it around, tap it to scroll back, or close it;
+// a closed card stays away until the viewer has been seen again.
+const pip = $('#pip'), pipStage = $('#pipStage'), mobileMq = matchMedia('(max-width: 900px)');
+const pipState = { out: false, dismissed: false, x: null, y: null };
+const navBottom = () => { const nav = document.querySelector('.nav'); return nav ? Math.max(0, nav.getBoundingClientRect().bottom) : 0; };
+function syncPip() {
+  const on = route === 'customize' && mobileMq.matches && pipState.out && !pipState.dismissed;
+  if (on === pip.hidden) { pip.hidden = !on; if (on) placePip(); }
+  if (route === 'customize') mountCanvas(on ? pipStage : viewport);
+}
+function checkPip() {
+  if (route !== 'customize' || !viewport.isConnected) return;
+  // only when scrolled down past it: the viewer sits above the screen (or under the sticky nav)
+  const out = viewport.getBoundingClientRect().bottom <= navBottom();
+  if (out === pipState.out) return;
+  pipState.out = out;
+  if (!out) pipState.dismissed = false;
+  syncPip();
+}
+function placePip(x = pipState.x, y = pipState.y) {
+  const w = pip.offsetWidth, h = pip.offsetHeight, m = 12, vw = document.documentElement.clientWidth, vh = innerHeight;
+  if (x == null) { x = vw - w - m; y = vh - h - m * 2; }
+  pipState.x = Math.min(Math.max(m, x), vw - w - m);
+  pipState.y = Math.min(Math.max(navBottom() + m, y), vh - h - m);
+  pip.style.translate = `${pipState.x}px ${pipState.y}px`;
+}
+function dismissPip() { pipState.dismissed = true; syncPip(); }
+function backToViewer() { viewport.scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth', block: 'center' }); }
+let pipDrag = null;
+pip.addEventListener('pointerdown', e => {
+  if (e.target.closest('.pip-close')) return;
+  pipDrag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, x: pipState.x, y: pipState.y, moved: false };
+  pip.setPointerCapture(e.pointerId);
+});
+pip.addEventListener('pointermove', e => {
+  if (!pipDrag || e.pointerId !== pipDrag.id) return;
+  const dx = e.clientX - pipDrag.sx, dy = e.clientY - pipDrag.sy;
+  if (!pipDrag.moved && Math.hypot(dx, dy) < 6) return;
+  pipDrag.moved = true; pip.classList.add('dragging');
+  placePip(pipDrag.x + dx, pipDrag.y + dy);
+});
+const endPipDrag = e => {
+  if (!pipDrag || e.pointerId !== pipDrag.id) return;
+  const tap = !pipDrag.moved && e.type === 'pointerup';
+  pipDrag = null; pip.classList.remove('dragging');
+  if (tap) backToViewer();
+};
+pip.addEventListener('pointerup', endPipDrag);
+pip.addEventListener('pointercancel', endPipDrag);
+pip.addEventListener('keydown', e => {
+  if (e.target !== pip) return;
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); backToViewer(); }
+  else if (e.key === 'Escape') dismissPip();
+});
+$('#pipClose').addEventListener('click', e => { e.stopPropagation(); dismissPip(); });
+document.addEventListener('scroll', checkPip, { passive: true, capture: true });
+addEventListener('resize', () => { if (!pip.hidden) placePip(); checkPip(); });
+mobileMq.addEventListener('change', syncPip);
+
 function attach() {
   const cz = document.querySelector('[data-studio="customize"]'), hero = document.querySelector('[data-studio="hero"]'), el = renderer.domElement;
   if (cz) {
     if (root.parentElement !== cz) cz.replaceChildren(root);
     route = 'customize';
-    if (el.parentElement !== viewport) viewport.prepend(el);
+    pipState.out = pipState.dismissed = false; pip.hidden = true;
+    mountCanvas(viewport);
     controls.enableZoom = true; controls.enablePan = true; el.style.touchAction = 'none';
   } else if (hero) {
     if (demo.running) stopDemo();
     if (iso.id) setIsolation(null);
     if (paint3d) setPaint3d(false);
     route = 'home';
-    if (el.parentElement !== hero) hero.prepend(el);
+    mountCanvas(hero);
     controls.enableZoom = false; controls.enablePan = false; el.style.touchAction = 'pan-y';
     const t = document.getElementById('heroTag'); if (t) t.textContent = `Live preview · ${model.name}`;
   } else { detach(); return; }
-  if (observed !== el.parentElement) { if (observed) resizeObs.unobserve(observed); observed = el.parentElement; resizeObs.observe(observed); }
   userMoved = false; onResize();
   const p = viewPose('home'); camera.position.copy(p.pos); controls.target.copy(p.target); tween = null;
   controls.update(); renderer.render(scene, camera);
-  if (route === 'customize') { renderQuote(); renderInspector(); updateHint(); }
+  if (route === 'customize') { renderQuote(); renderInspector(); updateHint(); checkPip(); }
 }
 function detach() { if (demo.running) stopDemo(); route = 'none'; }
 function selectModel(mid) { if (mid !== state.model) switchModel(mid); editingBoard = null; renderQuote(); }
